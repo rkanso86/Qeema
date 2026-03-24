@@ -379,6 +379,8 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="d-item" onclick="closeDrawer();switchTab('reports')"><div class="d-ico" style="background:rgba(102,234,185,0.08)">◎</div><span class="d-lbl">Reports</span></div>
     <div class="d-section">Data</div>
     <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span></div>
+    <div class="d-item" onclick="closeDrawer();openMgmt('transfers')"><div class="d-ico" style="background:rgba(95,199,254,0.10)">↔️</div><span class="d-lbl">Transfers</span></div>
+    <div class="d-item" onclick="closeDrawer();openMgmt('actionlist')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">✅</div><span class="d-lbl">Action List</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('assets')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">🏠</div><span class="d-lbl">Assets</span><span class="d-count" id="d-ast-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('liabilities')"><div class="d-ico" style="background:rgba(255,107,107,0.10)">🏦</div><span class="d-lbl">Liabilities</span><span class="d-count" id="d-lib-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('accounts')"><div class="d-ico" style="background:rgba(95,199,254,0.10)">💳</div><span class="d-lbl">Accounts</span><span class="d-count" id="d-acc-count">–</span></div>
@@ -443,6 +445,34 @@ body{display:flex;justify-content:center;align-items:center}
 <div class="mgmt-screen" id="mgmt-loan-schedule">
   <div class="mgmt-header"><div class="mgmt-back" onclick="closeMgmt('loan-schedule');openMgmt('liabilities')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="mgmt-title" id="schedule-title">Schedule</div></div>
   <div class="mgmt-body" id="mgmt-schedule-list"></div>
+</div>
+
+<!-- TRANSFERS -->
+<div class="mgmt-screen" id="mgmt-transfers">
+  <div class="mgmt-header">
+    <div class="mgmt-back" onclick="closeMgmt('transfers')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="mgmt-title">Transfers</div>
+    <button class="mgmt-add" onclick="openDetail('transfer',null)">+</button>
+  </div>
+  <div style="display:flex;gap:6px;padding:6px 16px 8px;flex-shrink:0">
+    <div class="fchip active" id="tr-tab-actual" onclick="setTransferTab('actual',this)">Actual</div>
+    <div class="fchip" id="tr-tab-planned" onclick="setTransferTab('planned',this)">Planned</div>
+  </div>
+  <div class="mgmt-body" id="mgmt-transfers-list"></div>
+</div>
+
+<!-- ACTION LIST -->
+<div class="mgmt-screen" id="mgmt-actionlist">
+  <div class="mgmt-header">
+    <div class="mgmt-back" onclick="closeMgmt('actionlist')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="mgmt-title">Salary Cycle Actions</div>
+  </div>
+  <div class="mgmt-body" id="mgmt-actionlist-body"></div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="mgmt-screen" id="mgmt-onboarding" style="z-index:300">
+  <div class="mgmt-body" id="onboarding-body" style="padding:0"></div>
 </div>
 
 <!-- ACCOUNTS -->
@@ -682,6 +712,8 @@ const REPORT_WIDGETS = [
   { id:'rpt-tagspend', label:'Spending by Tag',        'default':true  },
   { id:'rpt-methods',  label:'Payment Method Balances','default':true  },
   { id:'rpt-loans',    label:'Loan Snapshot',          'default':true  },
+  { id:'rpt-forecast', label:'12-Month Forecast',      'default':false },
+  { id:'rpt-bnpl',     label:'BNPL Tracker',           'default':false },
 ];
 function loadRptConfig(){ try{ return JSON.parse(localStorage.getItem('qeema_rpt_widgets')||'null'); }catch(e){return null;} }
 function saveRptConfig(cfg){ localStorage.setItem('qeema_rpt_widgets',JSON.stringify(cfg)); }
@@ -717,6 +749,10 @@ const BASE = {
 // ==============================================
 async function sbGet(table,params=''){
   const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});
+  if(!r.ok){
+    const txt=await r.text().catch(()=>'');
+    throw new Error(`${table}: HTTP ${r.status} ${txt.slice(0,100)}`);
+  }
   return r.json();
 }
 async function sbPost(table,body){
@@ -811,6 +847,8 @@ async function renderMgmt(type){
   if(type==='commitments') renderFilteredCmts('');
   else if(type==='assets') renderAssets('');
   else if(type==='liabilities') renderLiabilities('');
+  else if(type==='transfers') renderTransfers();
+  else if(type==='actionlist') renderActionList();
   else if(type==='accounts') renderAccounts('');
   else if(type==='tags') renderTags('');
   else if(type==='settings') renderSettings();
@@ -1073,6 +1111,7 @@ function openDetail(type,item){
     else if(type==='liability') renderLibDetail(item,body,isNew);
     else if(type==='account') renderAccDetail(item,body,isNew);
     else if(type==='tag') renderTagDetail(item,body,isNew);
+    else if(type==='transfer') renderTransferDetail(item,body,isNew);
   },10);
 }
 function closeDetail(){
@@ -1819,6 +1858,16 @@ function buildRptWidget(id){
   if(id==='rpt-loans'){
     card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Loans</div>';
     buildRptLoans(card);
+    return card;
+  }
+  if(id==='rpt-forecast'){
+    card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">12-Month Forecast</div>';
+    buildRptForecast(card);
+    return card;
+  }
+  if(id==='rpt-bnpl'){
+    card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">BNPL Tracker</div>';
+    buildBNPLSummary(card);
     return card;
   }
   return null;
@@ -2676,6 +2725,320 @@ function loadChatHistory(){
   }catch(e){ chatHistory=[]; }
 }
 
+// =============================================
+// TRANSFERS SCREEN
+// =============================================
+let transferTabActive='actual';
+function setTransferTab(tab,el){
+  transferTabActive=tab;
+  document.querySelectorAll('[id^="tr-tab-"]').forEach(e=>e.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderTransfers();
+}
+async function renderTransfers(){
+  const list=document.getElementById('mgmt-transfers-list');
+  list.innerHTML='<div style="color:var(--text3);font-size:12px;padding:16px">Loading…</div>';
+  if(transferTabActive==='actual'){
+    const data=await sbGet('transfers','order=txn_date.desc');
+    list.innerHTML='';
+    if(!data||!data.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No transfers recorded</div>';return;}
+    const card=document.createElement('div');card.className='card';card.style.padding='10px 14px';
+    data.forEach(t=>{
+      const row=document.createElement('div');row.className='list-item';
+      row.onclick=()=>openDetail('transfer',t);
+      row.innerHTML=`<div class="list-ico" style="background:rgba(95,199,254,0.10)">↔️</div><div class="list-info"><div class="list-name">${t.from_method||''} → ${t.to_method||''}</div><div class="list-sub">${t.txn_date?fmtDate(t.txn_date):''} · ${t.ccy_from||'AED'}</div></div><div class="list-right"><div class="list-val" style="color:var(--teal)">${fmtFull(t.amount_from||0)}</div><div class="list-date">${t.ccy_from||'AED'}</div></div><span class="list-arrow">›</span>`;
+      card.appendChild(row);
+    });
+    list.appendChild(card);
+  } else {
+    // Planned transfers
+    let data=[];
+    try{ data=await sbGet('transfer_commitments','order=expected_date.asc'); }catch(e){}
+    list.innerHTML='';
+    if(!data||!data.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No planned transfers.<br><br>Run seed_transfer_commitments.sql in Supabase to load them.</div>';return;}
+    const pending=data.filter(t=>t.status==='Pending');
+    const settled=data.filter(t=>t.status!=='Pending');
+    const sumOut=pending.reduce((s,t)=>s+(t.amount_from||0),0);
+    const sumDiv=document.createElement('div');
+    sumDiv.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin-bottom:10px';
+    sumDiv.innerHTML=`<span style="font-size:12px;color:var(--text3)">Total Pending Outflows</span><span style="font-size:14px;font-weight:700;color:var(--amber)">${fmtFull(sumOut)} AED</span>`;
+    list.appendChild(sumDiv);
+    const renderGroup=(items,label)=>{
+      if(!items.length) return;
+      const sec=document.createElement('div');sec.innerHTML=`<div class="section-lbl">${label} (${items.length})</div>`;
+      const card=document.createElement('div');card.className='card';card.style.padding='10px 14px';
+      items.forEach(t=>{
+        const row=document.createElement('div');row.className='list-item';
+        row.innerHTML=`<div class="list-ico" style="background:rgba(95,199,254,0.10)">↔️</div><div class="list-info"><div class="list-name">${t.from_method||''} → ${t.to_method||''}</div><div class="list-sub">${t.expected_date?fmtDate(t.expected_date):'TBD'} · <span class="badge ${t.status==='Settled'?'badge-g':'badge-a'}">${t.status}</span></div></div><div class="list-right"><div class="list-val" style="color:var(--amber)">${fmtFull(t.amount_from||0)}</div><div class="list-date">${t.ccy_from||'AED'}</div></div>`;
+        card.appendChild(row);
+      });
+      sec.appendChild(card);list.appendChild(sec);
+    };
+    renderGroup(pending,'Pending');
+    renderGroup(settled,'Settled');
+  }
+}
+
+// Transfer detail form
+function renderTransferDetail(t,body,isNew){
+  const methods=allAccounts.length?allAccounts.map(a=>a.method_name):['ENBD AED Account','WIO AED Account','Cash - AED'];
+  const ccys=['AED','USD','EUR','GBP','CAD','LBP'];
+  body.innerHTML=`
+    ${field('Date','tr_date',t?.txn_date||new Date().toISOString().split('T')[0],'date')}
+    ${field('From Account','tr_from',t?.from_method,'text',methods)}
+    ${field('To Account','tr_to',t?.to_method,'text',methods)}
+    ${field('Amount From','tr_amt_from',t?.amount_from,'number')}
+    ${field('Currency From','tr_ccy_from',t?.ccy_from||'AED','text',ccys)}
+    ${field('Amount To','tr_amt_to',t?.amount_to,'number')}
+    ${field('Currency To','tr_ccy_to',t?.ccy_to||'AED','text',ccys)}
+    ${field('Notes','notes',t?.notes)}
+    <button class="save-btn" onclick="saveTrf(${t?.id||'null'})">Save Transfer</button>
+    ${!isNew?`<button class="delete-btn" onclick="delItem('transfers','id=eq.${t?.id}')">Delete</button>`:''}`;
+}
+async function saveTrf(id){
+  const obj={txn_date:fv('tr_date'),from_method:fv('tr_from'),to_method:fv('tr_to'),amount_from:parseFloat(fv('tr_amt_from'))||0,ccy_from:fv('tr_ccy_from'),amount_to:parseFloat(fv('tr_amt_to'))||0,ccy_to:fv('tr_ccy_to'),from_base:parseFloat(fv('tr_amt_from'))||0,to_base:parseFloat(fv('tr_amt_to'))||0,notes:fv('notes')||null};
+  if(id&&id!=='null'){await sbPatch('transfers','id=eq.'+id,obj);showToast('✓ Transfer updated');}
+  else{await sbPost('transfers',obj);showToast('✓ Transfer saved');}
+  closeDetail();
+  if(currentMgmt==='transfers') renderTransfers();
+}
+
+// =============================================
+// SALARY CYCLE ACTION LIST
+// =============================================
+async function renderActionList(){
+  const body=document.getElementById('mgmt-actionlist-body');
+  body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:16px">Loading…</div>';
+
+  // Current salary cycle: 25th of last month to 24th of this month
+  const now=new Date();
+  const cycleDay=25;
+  let cycleStart=new Date(now.getFullYear(),now.getMonth()-1,cycleDay);
+  let cycleEnd=new Date(now.getFullYear(),now.getMonth(),cycleDay-1);
+  if(now.getDate()>=cycleDay){
+    cycleStart=new Date(now.getFullYear(),now.getMonth(),cycleDay);
+    cycleEnd=new Date(now.getFullYear(),now.getMonth()+1,cycleDay-1);
+  }
+  const csStr=cycleStart.toISOString().split('T')[0];
+  const ceStr=cycleEnd.toISOString().split('T')[0];
+
+  // Get pending commitments in this cycle
+  const pendingCmts=allCommitments.filter(c=>{
+    if(c.status!=='Pending'||!c.expected_date) return false;
+    return c.expected_date>=csStr && c.expected_date<=ceStr;
+  }).sort((a,b)=>a.expected_date.localeCompare(b.expected_date));
+
+  // Get loan payments due this cycle
+  let loanPayments=[];
+  try{
+    const sched=await sbGet('loan_schedule',`due_date=gte.${csStr}&due_date=lte.${ceStr}&status=eq.Pending&order=due_date.asc`);
+    loanPayments=sched||[];
+  }catch(e){}
+
+  // Get planned transfers this cycle
+  let plannedTrf=[];
+  try{
+    const trf=await sbGet('transfer_commitments',`status=eq.Pending&expected_date=gte.${csStr}&expected_date=lte.${ceStr}&order=expected_date.asc`);
+    plannedTrf=trf||[];
+  }catch(e){}
+
+  body.innerHTML='';
+
+  // Cycle header
+  const hdr=document.createElement('div');
+  hdr.className='card'; hdr.style.marginBottom='12px';
+  hdr.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:4px">Current Salary Cycle</div><div style="font-size:15px;font-weight:700;color:var(--text)">${fmtDate(csStr)} → ${fmtDate(ceStr)}</div><div style="font-size:11px;color:var(--text3);margin-top:6px">${pendingCmts.length} commitments · ${loanPayments.length} loan payments · ${plannedTrf.length} transfers</div>`;
+  body.appendChild(hdr);
+
+  const totalOut=(pendingCmts.filter(c=>c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0)) + loanPayments.reduce((s,p)=>s+(p.exp_amt_base||p.expected_amt||0),0) + plannedTrf.reduce((s,t)=>s+(t.amount_from||0),0);
+  const totalIn=pendingCmts.filter(c=>c.direction==='Income').reduce((s,c)=>s+(c.amount_base||0),0);
+  const summary=document.createElement('div');
+  summary.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px';
+  summary.innerHTML=`<div style="background:rgba(102,234,185,0.08);border:1px solid rgba(102,234,185,0.2);border-radius:12px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3)">Expected In</div><div style="font-size:18px;font-weight:700;color:var(--green)">+${fmtFull(totalIn)}</div></div><div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:12px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3)">Expected Out</div><div style="font-size:18px;font-weight:700;color:var(--red)">-${fmtFull(totalOut)}</div></div>`;
+  body.appendChild(summary);
+
+  const renderSection=(items,title,buildRow)=>{
+    if(!items.length) return;
+    const sec=document.createElement('div');sec.innerHTML=`<div class="section-lbl">${title} (${items.length})</div>`;
+    const card=document.createElement('div');card.className='card';card.style.padding='10px 14px';
+    items.forEach(item=>{
+      const row=document.createElement('div');row.className='list-item';
+      row.innerHTML=buildRow(item);
+      card.appendChild(row);
+    });
+    sec.appendChild(card);body.appendChild(sec);
+  };
+
+  renderSection(pendingCmts.filter(c=>c.direction==='Income'),'Incoming',c=>`<div class="list-ico" style="background:rgba(102,234,185,0.12)">${catIcons[c.category]||'💰'}</div><div class="list-info"><div class="list-name">${c.description}</div><div class="list-sub">${fmtDate(c.expected_date)} · ${c.category||''}</div></div><div class="list-right"><div class="list-val amt-in">+${fmt(c.amount_base)}</div></div>`);
+
+  renderSection(loanPayments,'Loan Payments',p=>`<div class="list-ico" style="background:rgba(255,107,107,0.12)">🏦</div><div class="list-info"><div class="list-name">${p.liability_id}</div><div class="list-sub">${fmtDate(p.due_date)} · Pmt #${p.payment_no}</div></div><div class="list-right"><div class="list-val amt-out">-${fmt(p.exp_amt_base||p.expected_amt)}</div></div>`);
+
+  renderSection(pendingCmts.filter(c=>c.direction==='Expense'),'Expenses',c=>`<div class="list-ico" style="background:rgba(255,107,107,0.12)">${catIcons[c.category]||'📌'}</div><div class="list-info"><div class="list-name">${c.description}</div><div class="list-sub">${fmtDate(c.expected_date)} · ${c.category||''}</div></div><div class="list-right"><div class="list-val amt-out">-${fmt(c.amount_base)}</div></div>`);
+
+  renderSection(plannedTrf,'Planned Transfers',t=>`<div class="list-ico" style="background:rgba(95,199,254,0.10)">↔️</div><div class="list-info"><div class="list-name">${t.from_method} → ${t.to_method}</div><div class="list-sub">${t.expected_date?fmtDate(t.expected_date):'TBD'}</div></div><div class="list-right"><div class="list-val" style="color:var(--amber)">${fmtFull(t.amount_from)} ${t.ccy_from}</div></div>`);
+
+  if(!pendingCmts.length&&!loanPayments.length&&!plannedTrf.length){
+    body.appendChild(Object.assign(document.createElement('div'),{style:'color:var(--text3);font-size:13px;padding:20px;text-align:center',textContent:'No actions this cycle'}));
+  }
+}
+
+// =============================================
+// 12-MONTH FORECAST WIDGET
+// =============================================
+function buildRptForecast(container){
+  const months=buildIncomeStatement();
+  if(!months.length){container.innerHTML='<div style="color:var(--text3);font-size:12px">Not enough data for forecast</div>';return;}
+  // Calculate averages from last 3 months
+  const recent=months.slice(-3);
+  const avgInc=recent.reduce((s,m)=>s+m.inc,0)/recent.length;
+  const avgExp=recent.reduce((s,m)=>s+m.exp,0)/recent.length;
+  const loanPmts=allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
+  // Generate next 6 months forecast
+  const lastYm=months.length?months[months.length-1].ym:'2026-03';
+  const [yr,mo]=lastYm.split('-').map(Number);
+  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const rows=[];
+  for(let i=1;i<=6;i++){
+    const d=new Date(yr,mo-1+i,1);
+    const label=names[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+    rows.push({label,inc:avgInc,exp:avgExp,loan:loanPmts,net:avgInc-avgExp});
+  }
+  const maxVal=Math.max(...rows.map(r=>Math.max(r.inc,r.exp)),1);
+  const body=document.createElement('div');
+  // Bar chart
+  const chartDiv=document.createElement('div');
+  chartDiv.style.cssText='display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:6px';
+  rows.forEach(r=>{
+    const col=document.createElement('div');col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;align-items:center';
+    col.innerHTML=`<div style="width:100%;background:rgba(102,234,185,0.35);border-radius:3px 3px 0 0;height:${((r.inc/maxVal)*56).toFixed(0)}px"></div>`;
+    chartDiv.appendChild(col);
+  });
+  const chartDiv2=document.createElement('div');
+  chartDiv2.style.cssText='display:flex;align-items:flex-end;gap:4px;height:60px;margin-bottom:4px';
+  rows.forEach(r=>{
+    const col=document.createElement('div');col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;align-items:center';
+    col.innerHTML=`<div style="width:100%;background:rgba(255,107,107,0.45);border-radius:3px 3px 0 0;height:${((r.exp/maxVal)*56).toFixed(0)}px"></div>`;
+    chartDiv2.appendChild(col);
+  });
+  const labelsDiv=document.createElement('div');
+  labelsDiv.style.cssText='display:flex;gap:4px;margin-bottom:10px';
+  rows.forEach(r=>{const s=document.createElement('span');s.style.cssText='flex:1;font-size:9px;color:var(--text3);text-align:center';s.textContent=r.label;labelsDiv.appendChild(s);});
+  body.appendChild(chartDiv);body.appendChild(chartDiv2);body.appendChild(labelsDiv);
+  // Legend
+  body.innerHTML+=`<div style="display:flex;gap:14px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;background:rgba(102,234,185,0.5);border-radius:2px"></div>Est. Income</div><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;background:rgba(255,107,107,0.5);border-radius:2px"></div>Est. Expenses</div></div>`;
+  // Table
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:4px;padding-bottom:6px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Income</span><span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
+  body.appendChild(hdr);
+  rows.forEach(r=>{
+    const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr;gap:4px;padding:6px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${r.label}</span><span style="font-size:11px;color:var(--green);text-align:right">${(r.inc/1000).toFixed(0)}K</span><span style="font-size:11px;color:var(--red);text-align:right">${(r.exp/1000).toFixed(0)}K</span><span style="font-size:11px;font-weight:700;color:${r.net>=0?'var(--green)':'var(--red)'};text-align:right">${r.net>=0?'+':''}${(r.net/1000).toFixed(0)}K</span>`;
+    body.appendChild(row);
+  });
+  if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+  body.innerHTML+=`<div style="font-size:10px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Based on ${recent.length}-month average. Actual results will vary.</div>`;
+  container.appendChild(body);
+}
+
+// =============================================
+// BNPL TRACKER
+// =============================================
+function buildBNPLSummary(container){
+  // Find BNPL accounts and their balances
+  const bnplAccounts=allAccounts.filter(a=>a.account_type==='BNPL');
+  if(!bnplAccounts.length){
+    container.innerHTML='<div style="color:var(--text3);font-size:12px">No BNPL accounts found</div>';
+    return;
+  }
+  const byAccount={};
+  bnplAccounts.forEach(a=>{byAccount[a.method_name]={name:a.method_name,open:a.open_bal_base||0,txns:[],months:a.bnpl_default_months||4};});
+  // Get BNPL transactions
+  allTxns.filter(t=>byAccount[t.txn_method]&&t.direction==='Expense').forEach(t=>{
+    byAccount[t.txn_method].txns.push(t);
+  });
+  let html='';
+  Object.values(byAccount).forEach(acc=>{
+    const totalCharged=acc.txns.reduce((s,t)=>s+(t.amount_base||0),0);
+    const balance=acc.open+(totalCharged); // simplified — actual balance needs payment history
+    html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:var(--text)">${acc.name}</span><span style="font-size:13px;font-weight:700;color:${balance>0?'var(--red)':'var(--green)'}">${fmtFull(Math.abs(balance))}</span></div><div style="font-size:11px;color:var(--text3)">${acc.txns.length} transactions · ${acc.months}-mo installments</div></div>`;
+  });
+  container.innerHTML=html||'<div style="color:var(--text3);font-size:12px">No BNPL activity</div>';
+}
+
+// =============================================
+// ONBOARDING
+// =============================================
+function openOnboarding(){
+  openMgmt('onboarding');
+  renderOnboarding(0);
+}
+function renderOnboarding(step){
+  const body=document.getElementById('onboarding-body');
+  const steps=[
+    {
+      icon:'👋', title:"Welcome to Qeema", sub:"Your personal CFO. Let's set you up in 4 quick steps.",
+      content:'<div style="text-align:center;padding:20px 0"><div style="font-size:64px;margin-bottom:16px">💰</div><div style="font-size:16px;color:var(--text);font-weight:600;margin-bottom:8px">Track every dollar.</div><div style="font-size:13px;color:var(--text3);line-height:1.6">Log transactions, manage commitments, track assets and loans — all in one place with AI assistance.</div></div>',
+      btn:'Get Started'
+    },
+    {
+      icon:'👤', title:"Your Profile", sub:"Tell us about yourself",
+      content:`<div class="field-row"><div class="field-label">Your Name</div><input class="field-input" id="ob-name" placeholder="e.g. Rabie" value="${localStorage.getItem('qeema_name')||''}"></div><div class="field-row"><div class="field-label">Base Currency</div><select class="field-select" id="ob-currency"><option value="AED" ${localStorage.getItem('qeema_currency')==='AED'?'selected':''}>AED - UAE Dirham</option><option value="USD">USD - US Dollar</option><option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option></select></div><div class="field-row"><div class="field-label">Salary Cycle Day</div><input class="field-input" id="ob-salary-day" type="number" placeholder="25" value="25"></div>`,
+      btn:'Continue'
+    },
+    {
+      icon:'🏦', title:"Your Accounts", sub:"Which accounts do you use?",
+      content:`<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your accounts are already loaded from your model. You can add or edit them in the Accounts section.</div><div id="ob-accounts-list"></div>`,
+      btn:'Continue',
+      onLoad:()=>{
+        const list=document.getElementById('ob-accounts-list');
+        if(list&&allAccounts.length){
+          list.innerHTML=allAccounts.slice(0,6).map(a=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text)">${a.method_name}</span><span style="color:var(--text3)">${a.currency_code}</span></div>`).join('')+(allAccounts.length>6?`<div style="font-size:11px;color:var(--text3);margin-top:6px">+${allAccounts.length-6} more accounts</div>`:'');
+        }
+      }
+    },
+    {
+      icon:'🎉', title:"You're all set!", sub:"Start tracking your finances",
+      content:'<div style="text-align:center;padding:20px 0"><div style="font-size:64px;margin-bottom:16px">🚀</div><div style="font-size:16px;color:var(--text);font-weight:600;margin-bottom:8px">Ready to go!</div><div style="font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:16px">Your Qeema model data is loaded. Use AI Chat to log transactions, or browse the menu to explore your data.</div><div style="background:rgba(95,199,254,0.08);border:1px solid var(--border2);border-radius:12px;padding:12px;font-size:12px;color:var(--text2);text-align:left"><div style="margin-bottom:6px">💡 <strong>Quick tips:</strong></div><div>• Tap the <strong>+</strong> button on home for quick logging</div><div style="margin-top:4px">• Use AI Chat: "Carrefour 340 AED groceries cash"</div><div style="margin-top:4px">• Check <strong>Action List</strong> for upcoming payments</div></div></div>',
+      btn:'Open Qeema'
+    }
+  ];
+  const s=steps[step];
+  body.innerHTML=`
+    <div style="padding:50px 24px 24px;height:100%;display:flex;flex-direction:column">
+      <div style="flex:1">
+        <div style="font-size:40px;margin-bottom:16px">${s.icon}</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px">${s.title}</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:24px">${s.sub}</div>
+        <div>${s.content}</div>
+      </div>
+      <div style="margin-top:24px">
+        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
+          ${steps.map((_,i)=>`<div style="width:${i===step?'20px':'8px'};height:8px;border-radius:4px;background:${i===step?'var(--teal)':'var(--border2)'}"></div>`).join('')}
+        </div>
+        <button class="save-btn" onclick="onboardingNext(${step},${steps.length})">${s.btn}</button>
+        ${step>0?`<button class="fp-reset" style="margin-top:8px" onclick="renderOnboarding(${step-1})">Back</button>`:''}
+      </div>
+    </div>`;
+  if(s.onLoad) setTimeout(s.onLoad,50);
+}
+function onboardingNext(step,total){
+  // Save profile settings on step 1
+  if(step===1){
+    const name=document.getElementById('ob-name')?.value||'';
+    const currency=document.getElementById('ob-currency')?.value||'AED';
+    if(name) localStorage.setItem('qeema_name',name);
+    if(currency) localStorage.setItem('qeema_currency',currency);
+  }
+  if(step+1>=total){
+    localStorage.setItem('qeema_onboarded','true');
+    closeMgmt('onboarding');
+    document.getElementById('dash-greeting').textContent='Good morning, '+(localStorage.getItem('qeema_name')||'Rabie');
+  } else {
+    renderOnboarding(step+1);
+  }
+}
+
 async function loadAll(){
   const theme=localStorage.getItem('qeema_theme')||'dark';
   document.documentElement.setAttribute('data-theme',theme);
@@ -2685,23 +3048,44 @@ async function loadAll(){
   document.getElementById('dash-greeting').textContent=greeting+', '+name;
   document.getElementById('loading').style.display='none';
   loadChatHistory();
-  try{
-    // Load ALL data in parallel first, then render once
-    [allLiabilities,allAssets,allTxns,allCommitments,allAccounts]=await Promise.all([
-      sbGet('liabilities','status=eq.Active'),
-      sbGet('assets','select=*'),
-      sbGet('transactions','order=txn_date.desc&limit=300'),
-      sbGet('commitments','order=expected_date.asc'),
-      sbGet('accounts','is_active=eq.Y&order=method_name.asc'),
-    ]);
-    renderDashboard();
-    applyTxnFilters();
-    buildMonthTabs();
-    updateCounts();
-    updateNotifications();
-  }catch(e){
-    showToast('Connection issue - some data may not load',true);
-    renderDashboard(); // render with empty data so app still shows
+
+  // Load each table individually — one failure won't block others
+  const errors=[];
+  async function safe(fn, label){
+    try{ return await fn(); }
+    catch(e){ errors.push(label+': '+e.message); console.error(label, e); return []; }
+  }
+
+  [allLiabilities,allAssets,allTxns,allCommitments,allAccounts]= await Promise.all([
+    safe(()=>sbGet('liabilities','status=eq.Active'),                    'liabilities'),
+    safe(()=>sbGet('assets','select=*'),                                  'assets'),
+    safe(()=>sbGet('transactions','order=txn_date.desc&limit=300'),       'transactions'),
+    safe(()=>sbGet('commitments','order=expected_date.asc'),              'commitments'),
+    safe(()=>sbGet('accounts','is_active=eq.Y&order=method_name.asc'),   'accounts'),
+  ]);
+
+  if(errors.length){
+    console.error('Load errors:', errors);
+    // Show visible error in dashboard
+    const el=document.getElementById('dash-widgets');
+    if(el && allTxns.length===0 && allAssets.length===0){
+      el.innerHTML=`<div class="card" style="text-align:center;padding:24px">
+        <div style="font-size:24px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">Could not connect to database</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${errors[0]}</div>
+        <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:10px 24px;font-family:var(--font);font-size:13px;font-weight:700;color:#1a2030;cursor:pointer">Retry</button>
+      </div>`;
+    }
+  }
+
+  renderDashboard();
+  applyTxnFilters();
+  buildMonthTabs();
+  updateCounts();
+  updateNotifications();
+  // Show onboarding on first visit
+  if(!localStorage.getItem('qeema_onboarded') && !allTxns.length){
+    setTimeout(()=>openOnboarding(),500);
   }
 }
 loadAll();
