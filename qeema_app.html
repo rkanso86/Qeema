@@ -1824,27 +1824,6 @@ function buildRptWidget(id){
   return null;
 }
 
-function buildRptIncome(container){
-  const el=container||document.querySelector('#rpt-inc-body');
-  const ym=getSelectedMonth('rpt-inc');
-  let target=el;
-  if(!container){ target=document.getElementById('rpt-inc-body'); if(!target)return; target.innerHTML=''; }
-  const months=buildIncomeStatement();
-  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
-  const hdr=document.createElement('div');
-  hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
-  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Income</span><span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
-  target.appendChild(hdr);
-  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  display.forEach(m=>{
-    const net=m.inc-m.exp;
-    const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
-    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[parseInt(m.ym.split('-')[1])-1]}</span><span style="font-size:11px;font-weight:600;color:var(--green);text-align:right">${m.inc>0?fmtFull(m.inc):'-'}</span><span style="font-size:11px;font-weight:600;color:var(--red);text-align:right">${m.exp>0?fmtFull(m.exp):'-'}</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>`;
-    target.appendChild(row);
-  });
-  if(target.lastElementChild) target.lastElementChild.style.borderBottom='none';
-}
 function buildRptIncome(container){ // overload — renders into passed card
   const ym=getSelectedMonth('rpt-inc');
   const body=document.createElement('div'); body.id='rpt-inc-body';
@@ -2706,14 +2685,11 @@ async function loadAll(){
   document.getElementById('dash-greeting').textContent=greeting+', '+name;
   document.getElementById('loading').style.display='none';
   loadChatHistory();
-  renderDashboard();
   try{
-    [allLiabilities,allAssets]=await Promise.all([
+    // Load ALL data in parallel first, then render once
+    [allLiabilities,allAssets,allTxns,allCommitments,allAccounts]=await Promise.all([
       sbGet('liabilities','status=eq.Active'),
       sbGet('assets','select=*'),
-    ]);
-    renderDashboard();
-    [allTxns,allCommitments,allAccounts]=await Promise.all([
       sbGet('transactions','order=txn_date.desc&limit=300'),
       sbGet('commitments','order=expected_date.asc'),
       sbGet('accounts','is_active=eq.Y&order=method_name.asc'),
@@ -2725,6 +2701,7 @@ async function loadAll(){
     updateNotifications();
   }catch(e){
     showToast('Connection issue - some data may not load',true);
+    renderDashboard(); // render with empty data so app still shows
   }
 }
 loadAll();
