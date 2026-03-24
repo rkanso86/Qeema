@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema</title>
+<title>Qeema v3.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">March 2026 · AED</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.1</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -880,14 +880,14 @@ async function renderLiabilities(q=''){
   allLiabilities=data.filter(l=>l.status==='Active');
   const filtered=q?data.filter(l=>l.liability_name?.toLowerCase().includes(q.toLowerCase())):data;
   list.innerHTML='';
-  const totalAED=data.filter(l=>l.status==='Active').reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*3.67:(l.remaining_principal||0)),0);
+  const totalAED=data.filter(l=>l.status==='Active').reduce((s,l)=>s+(l.remaining_principal||0),0);
   const monthlyTotal=data.filter(l=>l.status==='Active').reduce((s,l)=>s+(l.monthly_payment||0),0);
   const sumCard=document.createElement('div'); sumCard.className='card'; sumCard.style.marginBottom='10px';
   sumCard.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--card2);border-radius:10px;padding:10px"><div style="font-size:10px;color:var(--text3)">Total Remaining</div><div style="font-size:16px;font-weight:700;color:var(--red)">${fmtFull(totalAED)}</div><div style="font-size:10px;color:var(--text3)">AED</div></div><div style="background:var(--card2);border-radius:10px;padding:10px"><div style="font-size:10px;color:var(--text3)">Monthly Payments</div><div style="font-size:16px;font-weight:700;color:var(--amber)">${fmtFull(monthlyTotal)}</div><div style="font-size:10px;color:var(--text3)">AED</div></div></div>`;
   list.appendChild(sumCard);
   filtered.forEach(l=>{
-    const remaining=l.loan_currency==='USD'?(l.remaining_principal||0)*3.67:(l.remaining_principal||0);
-    const orig=l.loan_currency==='USD'?(l.original_principal||0)*3.67:(l.original_principal||0);
+    const remaining=l.remaining_principal||0;
+    const orig=l.original_principal||0;
     const pct=orig>0?Math.min(100,((orig-remaining)/orig)*100):0;
     const lCard=document.createElement('div'); lCard.className='card'; lCard.style.marginBottom='10px';
     lCard.innerHTML=`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px"><div style="width:38px;height:38px;border-radius:11px;background:rgba(255,107,107,0.12);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🏦</div><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">${l.liability_name}</div><div style="font-size:11px;color:var(--text3)">${l.interest_type||''} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.lender||''}</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:var(--card2);border-radius:9px;padding:9px"><div style="font-size:10px;color:var(--text3)">Remaining</div><div style="font-size:14px;font-weight:700;color:var(--red)">${fmtFull(remaining)}</div><div style="font-size:10px;color:var(--text3)">${l.loan_currency}</div></div><div style="background:var(--card2);border-radius:9px;padding:9px"><div style="font-size:10px;color:var(--text3)">Monthly Pmt</div><div style="font-size:14px;font-weight:700;color:var(--amber)">${fmtFull(l.monthly_payment||0)}</div><div style="font-size:10px;color:var(--text3)">${l.remaining_pmts||0} pmts left</div></div></div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px"><span>Paid off</span><span>${pct.toFixed(1)}%</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div></div><div style="display:flex;gap:8px"><button onclick="openDetail('liability',${JSON.stringify(l).replace(/"/g,'&quot;')})" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:8px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer">✏ Edit</button><button onclick="openLoanSchedule('${l.liability_id}','${l.liability_name}')" style="flex:1;background:rgba(95,199,254,0.10);border:1px solid rgba(95,199,254,0.2);border-radius:9px;padding:8px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--teal);cursor:pointer">📅 Schedule</button></div>`;
@@ -1578,7 +1578,7 @@ function renderDashboard(){
   const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
   const totalLiab=allLiabilities.reduce((s,l)=>{
     const rem=l.remaining_principal||0;
-    return s+(l.loan_currency==='USD'?rem*fxMap.USD:l.loan_currency==='EUR'?rem*fxMap.EUR:l.loan_currency==='CAD'?rem*fxMap.CAD:rem);
+    return s+(l.remaining_principal||0); // principal used as-is per model convention
   },0);
   const netWorth=totalAssets-totalLiab;
 
@@ -1921,7 +1921,7 @@ function buildRptBalance(container){
   const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
   const fx={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
   const toBase=(v,ccy)=>v*(fx[ccy]||1);
-  const totalLiab=allLiabilities.reduce((s,l)=>s+toBase(l.remaining_principal||0,l.loan_currency),0);
+  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
   const netWorth=totalAssets-totalLiab;
   // Assets breakdown
   const byType={};
@@ -1935,7 +1935,7 @@ function buildRptBalance(container){
   html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Assets</span><span style="font-size:13px;font-weight:700;color:var(--green)">${fmtFull(totalAssets)}</span></div>`;
   html+=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Liabilities</div>`;
   allLiabilities.forEach(l=>{
-    const rem=l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0);
+    const rem=l.remaining_principal||0;
     html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${l.liability_name}</span><span style="font-weight:600;color:var(--text)">${fmtFull(rem)} <span style="color:var(--text3);font-size:10px">(${l.loan_currency})</span></span></div>`;
   });
   html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Liabilities</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(totalLiab)}</span></div>`;
@@ -2008,8 +2008,8 @@ function buildRptLoans(container){
   if(!allLiabilities.length){body.innerHTML='<div style="color:var(--text3);font-size:12px">No active loans</div>';container.appendChild(body);return;}
   allLiabilities.forEach(l=>{
     const remNative=l.remaining_principal||0;
-    const remAED=toBase3(remNative,l.loan_currency);
-    const origAED=toBase3(l.original_principal||0,l.loan_currency);
+    const remAED=remNative; // principal is balance-sheet AED equivalent
+    const origAED=l.original_principal||0;
     // Use payments ratio for pct paid — more reliable than principal for 0% flat loans
     const origPmts=l.orig_term_months||1;
     const remPmts=l.remaining_pmts||0;
