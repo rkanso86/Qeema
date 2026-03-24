@@ -1777,19 +1777,10 @@ function buildRptWidget(id){
   const toAED=(v,ccy)=>v*(ccy==='USD'?fxUSD:ccy==='CAD'?fxCAD:ccy==='EUR'?fxEUR:1);
 
   if(id==='rpt-income'){
-    // Month selector header
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">Income Statement</span>${monthSelector('rpt-inc','buildRptIncome()')}`;
-    card.appendChild(hdr);
     buildRptIncome(card);
     return card;
   }
   if(id==='rpt-cashflow'){
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">Cash Flow</span>${monthSelector('rpt-cf','buildRptCashFlow()')}`;
-    card.appendChild(hdr);
     buildRptCashFlow(card);
     return card;
   }
@@ -1799,19 +1790,25 @@ function buildRptWidget(id){
     return card;
   }
   if(id==='rpt-catspend'){
+    card.id='rpt-catspend-card';
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Category</span>${monthSelector('rpt-cat','buildRptCatSpend()')}`;
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Category</span>${monthSelector('rpt-cat','refreshRptWidget(\'rpt-catspend\')')}`;
     card.appendChild(hdr);
-    buildRptCatSpend(card);
+    const body=document.createElement('div');body.id='rpt-cat-body';
+    card.appendChild(body);
+    buildRptCatSpend(body);
     return card;
   }
   if(id==='rpt-tagspend'){
+    card.id='rpt-tagspend-card';
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Tag</span>${monthSelector('rpt-tag','buildRptTagSpend()')}`;
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Tag</span>${monthSelector('rpt-tag','refreshRptWidget(\'rpt-tagspend\')')}`;
     card.appendChild(hdr);
-    buildRptTagSpend(card);
+    const body=document.createElement('div');body.id='rpt-tag-body';
+    card.appendChild(body);
+    buildRptTagSpend(body);
     return card;
   }
   if(id==='rpt-methods'){
@@ -1918,6 +1915,17 @@ function buildRptBalance(container){
   const div=document.createElement('div');div.innerHTML=html;container.appendChild(div);
 }
 
+function refreshRptWidget(id){
+  // Called when month selector changes — re-render just the body of the widget
+  if(id==='rpt-catspend'){
+    const body=document.getElementById('rpt-cat-body');
+    if(body){body.innerHTML='';buildRptCatSpend(body);}
+  } else if(id==='rpt-tagspend'){
+    const body=document.getElementById('rpt-tag-body');
+    if(body){body.innerHTML='';buildRptTagSpend(body);}
+  }
+}
+
 function buildRptCatSpend(container){
   const ym=getSelectedMonth('rpt-cat');
   const txns=ym?allTxns.filter(t=>t.direction==='Expense'&&t.txn_date&&t.txn_date.startsWith(ym)):allTxns.filter(t=>t.direction==='Expense');
@@ -1929,9 +1937,7 @@ function buildRptCatSpend(container){
   const top4=arr.slice(0,4);
   let offset=CIRC*0.25;
   const donutSVG=top4.map(([,val],i)=>{const arc=(val/total)*CIRC;const s=`<circle cx="100" cy="100" r="60" fill="none" stroke="${colors[i]}" stroke-width="24" stroke-dasharray="${Math.max(0,arc-4).toFixed(1)} ${CIRC}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="butt"/>`;offset-=arc;return s;}).join('');
-  const body=document.createElement('div');
-  body.innerHTML=`<svg viewBox="0 0 200 200" width="110" height="110" style="display:block;margin:0 auto 12px;transform:rotate(-90deg)"><circle cx="100" cy="100" r="60" fill="none" stroke="var(--card2)" stroke-width="24"/>${donutSVG}<text x="100" y="95" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">${(total/1000).toFixed(0)}K</text><text x="100" y="110" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">AED</text></svg>${arr.slice(0,8).map(([cat,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}`;
-  container.appendChild(body);
+  container.innerHTML=`<svg viewBox="0 0 200 200" width="110" height="110" style="display:block;margin:0 auto 12px;transform:rotate(-90deg)"><circle cx="100" cy="100" r="60" fill="none" stroke="var(--card2)" stroke-width="24"/>${donutSVG}<text x="100" y="95" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">${(total/1000).toFixed(0)}K</text><text x="100" y="110" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">AED</text></svg>${arr.slice(0,8).map(([cat,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}`;
 }
 
 function buildRptTagSpend(container){
@@ -1941,32 +1947,26 @@ function buildRptTagSpend(container){
   const arr=Object.entries(byTag).sort((a,b)=>b[1]-a[1]);
   const total=arr.reduce((s,[,v])=>s+v,0)||1;
   const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa'];
-  const body=document.createElement('div');
-  body.innerHTML=arr.length?arr.map(([tag,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${tag}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join(''):'<div style="color:var(--text3);font-size:12px">No tagged transactions</div>';
-  container.appendChild(body);
+  container.innerHTML=arr.length?arr.map(([tag,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${tag}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join(''):'<div style="color:var(--text3);font-size:12px">No tagged transactions</div>';
 }
 
 function buildRptMethods(container){
   const body=document.createElement('div');
-  // Running balance: opening bal + all inflows - all outflows
   const byMethod={};
-  allAccounts.forEach(a=>{byMethod[a.method_name]={open:a.open_bal_base||0,in:0,out:0,ccy:a.currency_code};});
+  allAccounts.forEach(a=>{byMethod[a.method_name]={open:a.open_bal_base||0,inc:0,out:0,ccy:a.currency_code};});
   allTxns.forEach(t=>{
     if(!t.txn_method) return;
-    if(!byMethod[t.txn_method]) byMethod[t.txn_method]={open:0,in:0,out:0,ccy:'AED'};
-    if(t.direction==='Income') byMethod[t.txn_method].in+=(t.amount_base||0);
+    if(!byMethod[t.txn_method]) byMethod[t.txn_method]={open:0,inc:0,out:0,ccy:'AED'};
+    if(t.direction==='Income') byMethod[t.txn_method].inc+=(t.amount_base||0);
     else byMethod[t.txn_method].out+=(t.amount_base||0);
   });
-  const arr=Object.entries(byMethod).map(([m,v])=>({m,open:v.open,in:v.in,out:v.out,close:v.open+v.in-v.out,ccy:v.ccy})).sort((a,b)=>Math.abs(b.close)-Math.abs(a.close));
-  const hdr=document.createElement('div');
-  hdr.style.cssText='display:grid;grid-template-columns:1fr 62px 62px 68px;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
-  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Account</span><span style="font-size:10px;color:var(--text3);text-align:right">Opening</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span><span style="font-size:10px;color:var(--text3);text-align:right">Balance</span>';
-  body.appendChild(hdr);
-  arr.slice(0,12).forEach(({m,open,in:inc,out,close,ccy})=>{
-    const net=inc-out;
+  const arr=Object.entries(byMethod)
+    .map(([m,v])=>({m,bal:v.open+v.inc-v.out,ccy:v.ccy}))
+    .sort((a,b)=>Math.abs(b.bal)-Math.abs(a.bal));
+  arr.slice(0,14).forEach(({m,bal,ccy})=>{
     const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:1fr 62px 62px 68px;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center';
-    row.innerHTML=`<span style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><span style="font-size:10px;color:var(--text3);text-align:right">${fmtFull(open)}</span><span style="font-size:11px;font-weight:600;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span><span style="font-size:11px;font-weight:700;color:${close>=0?'var(--text)':'var(--red)'};text-align:right">${fmtFull(close)}</span>`;
+    row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:13px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px">${m}</span><div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:${bal>=0?'var(--text)':'var(--red)'}">${fmtFull(bal)}</div><div style="font-size:10px;color:var(--text3)">${ccy}</div></div>`;
     body.appendChild(row);
   });
   if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
@@ -1982,7 +1982,11 @@ function buildRptLoans(container){
     const remNative=l.remaining_principal||0;
     const remAED=toBase3(remNative,l.loan_currency);
     const origAED=toBase3(l.original_principal||0,l.loan_currency);
-    const pct=origAED>0?Math.min(100,((origAED-remAED)/origAED)*100):0;
+    // Use payments ratio for pct paid — more reliable than principal for 0% flat loans
+    const origPmts=l.orig_term_months||1;
+    const remPmts=l.remaining_pmts||0;
+    const paidPmts=Math.max(0,origPmts-remPmts);
+    const pct=origPmts>0?Math.min(100,(paidPmts/origPmts)*100):0;
     const div=document.createElement('div');
     div.style.cssText='padding:10px 0;border-bottom:1px solid var(--border)';
     div.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:600;color:var(--text)">${l.liability_name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(remNative)} <span style="font-size:10px;color:var(--text3)">${l.loan_currency}</span></span></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px"><span>${l.interest_type||''} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.remaining_pmts||0} pmts</span><span>AED ${fmtFull(remAED)} equiv</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">${pct.toFixed(1)}% paid</div>`;
