@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema v3.8</title>
+<title>Qeema v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.8</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v4.0</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -695,7 +695,7 @@ const _b='12MBGXyoDIOTee_X6R1xKand1hgPvtAdgefJHj';
 const _c='-h6029GgqzAGPxAxbFh57VQ-E4bfDwAA';
 const CLAUDE_KEY=_a+_b+_c;
 
-let allTxns=[], allCommitments=[], allLiabilities=[], allAssets=[], allAccounts=[], allTags=[], allAssumptions=[], allTransfers=[], allLoanSchedule=[], allFxRates=[];
+let allTxns=[], allCommitments=[], allLiabilities=[], allAssets=[], allAccounts=[], allTags=[], allAssumptions=[], allTransfers=[], allLoanSchedule=[], allFxRates=[], allCategories=[];
 let chatHistory=[];
 let txnSort='date', cmtSort='date';
 let currentMgmt=null, currentDetailType=null, currentDetailItem=null;
@@ -874,7 +874,7 @@ function computeKPIs() {
   const txns = allTxns.map(enrichTxn);
   const reportYear = 2026;
   
-  // Find window end: last month with income > threshold (matches Excel's approach)
+  // ── WINDOW: month 1 to last month with significant income ──
   let windowEnd = 1;
   for (let m = 1; m <= 12; m++) {
     const ym = reportYear * 100 + m;
@@ -882,87 +882,108 @@ function computeKPIs() {
     txns.forEach(t => {
       if (t.direction === 'Income' && ym >= t.valYM && ym <= t.valEndYM) mInc += t.monthlyK;
     });
-    if (mInc > 1000) windowEnd = m; // Significant income threshold
+    if (mInc > 1000) windowEnd = m;
   }
   const windowStart = Math.max(1, windowEnd - 11);
+  const windowMonths = windowEnd - windowStart + 1;
+  const wmStart = reportYear * 100 + windowStart;
+  const wmEnd = reportYear * 100 + windowEnd;
   
-  // VALUE-RECOGNITION basis over window (matches Hlpr_Aggregation rows 12-17)
-  let coreInc = 0, coreExp = 0, nonCoreExp = 0, totalExp = 0;
+  // ── SAVINGS RATE: (CoreInc - CoreExp) / CoreInc — value recognition basis ──
+  let coreInc = 0, coreExp = 0;
   for (let m = windowStart; m <= windowEnd; m++) {
     const ym = reportYear * 100 + m;
     txns.forEach(t => {
       if (ym < t.valYM || ym > t.valEndYM) return;
-      if (t.direction === 'Income') {
-        if ((t.core_flag||'').toLowerCase() !== 'non-core') coreInc += t.monthlyK;
-      } else {
-        const isNonCore = (t.core_flag||'').toLowerCase() === 'non-core';
-        if (!isNonCore) coreExp += t.monthlyK;
-        else nonCoreExp += t.monthlyK;
-        totalExp += t.monthlyK;
-      }
+      const isNonCore = (t.core_flag||'').toLowerCase() === 'non-core';
+      if (isNonCore) return;
+      if (t.direction === 'Income') coreInc += t.monthlyK;
+      else coreExp += t.monthlyK;
     });
   }
-  
-  // Savings Rate = (CoreInc - CoreExp) / CoreInc — NO loan payments here
   const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
   
-  // DTI = avg monthly debt service / avg monthly committed income (matches Excel Rpt_FreeCash)
-  const windowMonths = windowEnd - windowStart + 1;
-  // Monthly debt service: loan payments + BNPL from loan_schedule in window
-  let totalDebtService = 0;
+  // ── DTI: avg(loan+BNPL dues) / avg(committed income) — matches Excel Rpt_FreeCash ──
+  // Loan dues from loan_schedule in window
+  let loanDues = 0;
   allLoanSchedule.forEach(s => {
     const sYM = dateToYM(s.due_date);
-    if (sYM >= reportYear * 100 + windowStart && sYM <= reportYear * 100 + windowEnd) {
-      totalDebtService += +(s.exp_amt_base || s.expected_amt || 0);
+    if (sYM >= wmStart && sYM <= wmEnd) {
+      loanDues += +(s.exp_amt_base || s.expected_amt || 0);
     }
   });
-  const avgMonthlyDebt = totalDebtService / windowMonths;
-  // Committed income: pending income commitments in window + actual income
-  let committedIncome = 0;
-  allCommitments.filter(c => c.direction === 'Income').forEach(c => {
+  // BNPL dues: pending BNPL commitments in window
+  let bnplDues = 0;
+  allCommitments.filter(c => c.status === 'Pending' && c.direction === 'Expense').forEach(c => {
+    // Check if this looks like a BNPL commitment (settle_method or description hints)
     const cYM = dateToYM(c.expected_date);
-    if (cYM >= reportYear * 100 + windowStart && cYM <= reportYear * 100 + windowEnd) {
+    if (cYM >= wmStart && cYM <= wmEnd) {
+      // Only count if it's from a BNPL source (approximate)
+      const desc = (c.description || '').toLowerCase();
+      if (desc.includes('tabby') || desc.includes('bnpl') || desc.includes('tamara')) {
+        bnplDues += +(c.amount_base || 0);
+      }
+    }
+  });
+  const avgMonthlyDebt = (loanDues + bnplDues) / windowMonths;
+  
+  // Committed income: pending+settled income commitments + actual income txns in window
+  let committedIncome = 0;
+  allCommitments.forEach(c => {
+    if (c.direction !== 'Income') return;
+    const cYM = dateToYM(c.expected_date || c.actual_date);
+    if (cYM >= wmStart && cYM <= wmEnd) {
       committedIncome += +(c.amount_base || 0);
     }
   });
-  // Also add actual income from transactions
-  txns.forEach(t => {
-    if (t.direction !== 'Income') return;
-    if (t.txnYM < reportYear * 100 + windowStart || t.txnYM > reportYear * 100 + windowEnd) return;
-    committedIncome += t.amtBase;
-  });
-  const avgMonthlyCommittedIncome = committedIncome / windowMonths;
-  const dti = avgMonthlyCommittedIncome > 0 ? avgMonthlyDebt / avgMonthlyCommittedIncome : 0;
-  
-  // DSCR = Cash Inflows / Loan Settlements (cash basis over window)
-  let cashInflows = 0;
-  const wmStart = reportYear * 100 + windowStart;
-  const wmEnd = reportYear * 100 + windowEnd;
+  // Add actual income from transactions
   txns.forEach(t => {
     if (t.direction !== 'Income') return;
     if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
+    committedIncome += t.amtBase;
+  });
+  const avgMonthlyCommIncome = committedIncome / windowMonths;
+  const dti = avgMonthlyCommIncome > 0 ? avgMonthlyDebt / avgMonthlyCommIncome : 0;
+  
+  // ── DSCR: sum(core cash inflows) / sum(total settlements) — matches Excel Rpt_CashFlow ──
+  let cashInflows = 0;
+  txns.forEach(t => {
+    if (t.direction !== 'Income') return;
+    if ((t.core_flag||'').toLowerCase() === 'non-core') return;
+    if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
     cashInflows += t.amtBase;
   });
-  let loanSettlements = 0;
+  let totalSettlements = 0;
   allLoanSchedule.filter(s => s.status === 'Settled').forEach(s => {
     const sYM = dateToYM(s.due_date);
     if (sYM >= wmStart && sYM <= wmEnd) {
-      loanSettlements += +(s.exp_amt_base || s.expected_amt || 0);
+      totalSettlements += +(s.exp_amt_base || s.expected_amt || 0);
     }
   });
-  const dscr = loanSettlements > 0 ? cashInflows / loanSettlements : 99;
+  const dscr = totalSettlements > 0 ? cashInflows / totalSettlements : 99;
   
-  // Discretionary % = Non-Core expense / Total expense (cash basis)
-  let cashExpTotal = 0, cashExpNonCore = 0;
+  // ── DISCRETIONARY %: disc expenses / total expenses — cash basis, uses categories table ──
+  // Build discretionary category set from loaded categories
+  const discCatSet = new Set();
+  allCategories.forEach(c => {
+    if (c.discretionary === 'Yes') discCatSet.add(c.category);
+  });
+  // Fallback if categories not loaded
+  if (discCatSet.size === 0) {
+    ['Business Services','Dining','Entertainment','Gifts/Donations','Household Items','Personal','Travel']
+      .forEach(c => discCatSet.add(c));
+  }
+  
+  let cashExpTotal = 0, cashExpDisc = 0;
   txns.forEach(t => {
     if (t.direction !== 'Expense') return;
     if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
     cashExpTotal += t.amtBase;
-    if ((t.core_flag||'').toLowerCase() === 'non-core') cashExpNonCore += t.amtBase;
+    if (discCatSet.has(t.category)) cashExpDisc += t.amtBase;
   });
-  const discPct = cashExpTotal > 0 ? cashExpNonCore / cashExpTotal : 0;
+  const discPct = cashExpTotal > 0 ? cashExpDisc / cashExpTotal : 0;
 
-  return { savingsRate, dti, dscr, discPct, totalInc: coreInc, totalExp };
+  return { savingsRate, dti, dscr, discPct, totalInc: coreInc, totalExp: coreExp };
 }
 
 
@@ -2033,9 +2054,11 @@ function renderReports(){
   body.innerHTML='';
 
   // YTD summary (always shown)
-  const ytdInc=allTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
-  const ytdExp=allTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
-  const ytdNet=ytdInc-ytdExp;
+  // YTD from Income Statement engine (value-recognition basis)
+  const _isYTD = computeIS();
+  let ytdInc = 0, ytdExp = 0;
+  Object.values(_isYTD).forEach(m => { ytdInc += m.inc; ytdExp += m.exp; });
+  const ytdNet = ytdInc - ytdExp;
   const ytdDiv=document.createElement('div');
   ytdDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;padding-top:4px';
   ytdDiv.innerHTML=`<div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">YTD Income</div><div style="font-size:14px;font-weight:700;color:var(--green)">${(ytdInc/1000).toFixed(1)}K</div></div><div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">YTD Expenses</div><div style="font-size:14px;font-weight:700;color:var(--red)">${(ytdExp/1000).toFixed(1)}K</div></div><div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">Net</div><div style="font-size:14px;font-weight:700;color:${ytdNet>=0?'var(--green)':'var(--red)'}">${ytdNet>=0?'+':''}${(ytdNet/1000).toFixed(1)}K</div></div>`;
@@ -3333,6 +3356,7 @@ async function loadAll(){
     safeGet('transfers','order=txn_date.desc','transfers'),
     safeGet('loan_schedule','order=liability_id.asc,payment_no.asc','loan_schedule'),
     safeGet('fx_rates','order=currency_code.asc','fx_rates'),
+    safeGet('categories','select=category,discretionary&direction=eq.Expense','categories'),
   ]);
 
   const anyFailed = results.slice(0,5).some(r => r === null);
@@ -3347,6 +3371,7 @@ async function loadAll(){
   allTransfers    = results[6] || [];
   allLoanSchedule = results[7] || [];
   allFxRates      = results[8] || [];
+  allCategories   = results[9] || [];
 
   // Show status card — always visible so we can diagnose
   const counts = [allLiabilities,allAssets,allTxns,allCommitments,allAccounts].map(a=>a.length);
