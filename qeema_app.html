@@ -273,6 +273,83 @@
   .up-name { font-size: 13px; font-weight: 500; color: var(--text); }
   .up-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
   .up-amt { font-size: 14px; font-weight: 700; }
+
+  /* ── HAMBURGER ── */
+  .hamburger { width:36px;height:36px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;cursor:pointer;flex-shrink:0; }
+  .hamburger span { width:20px;height:2px;background:var(--text2);border-radius:2px;transition:all 0.2s; }
+
+  /* ── SIDE DRAWER ── */
+  .drawer-overlay { position:absolute;inset:0;background:rgba(0,0,0,0.6);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.25s;border-radius:48px; }
+  .drawer-overlay.open { opacity:1;pointer-events:all; }
+  .drawer { position:absolute;top:0;left:0;width:280px;height:100%;background:var(--bg3);z-index:201;transform:translateX(-100%);transition:transform 0.28s cubic-bezier(.4,0,.2,1);border-radius:48px 0 0 48px;display:flex;flex-direction:column;overflow:hidden; }
+  .drawer.open { transform:translateX(0); }
+  .drawer-head { padding:48px 20px 20px;border-bottom:1px solid var(--border);flex-shrink:0; }
+  .drawer-logo { display:flex;align-items:center;gap:10px;margin-bottom:4px; }
+  .drawer-logo-q { width:32px;height:32px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1a2030; }
+  .drawer-name { font-size:18px;font-weight:700;color:var(--text); }
+  .drawer-sub { font-size:11px;color:var(--text3);margin-top:2px; }
+  .drawer-nav { flex:1;overflow-y:auto;padding:12px 0; }
+  .drawer-nav::-webkit-scrollbar { display:none; }
+  .drawer-section { font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:12px 20px 6px; }
+  .drawer-item { display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;transition:background 0.15s; }
+  .drawer-item:active,.drawer-item.active { background:rgba(95,199,254,0.08); }
+  .drawer-item.active .drawer-item-label { color:var(--teal); }
+  .drawer-item-ico { width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+  .drawer-item-label { font-size:14px;font-weight:500;color:var(--text2); }
+  .drawer-item-count { margin-left:auto;background:var(--card2);border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--text3); }
+  .drawer-footer { padding:16px 20px calc(16px + var(--safe-bottom));border-top:1px solid var(--border);font-size:11px;color:var(--text3);flex-shrink:0; }
+
+  /* ── MANAGEMENT SCREENS ── */
+  .mgmt-screen { display:none;position:absolute;inset:0;background:var(--bg);z-index:150;flex-direction:column;border-radius:48px;overflow:hidden; }
+  .mgmt-screen.open { display:flex; }
+  .mgmt-header { display:flex;align-items:center;gap:12px;padding:50px 18px 14px;flex-shrink:0;border-bottom:1px solid var(--border); }
+  .mgmt-back { width:34px;height:34px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0; }
+  .mgmt-title { font-size:18px;font-weight:700;color:var(--text);flex:1; }
+  .mgmt-add { width:34px;height:34px;border-radius:10px;background:var(--grad);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:18px;color:#1a2030;font-weight:700; }
+  .mgmt-body { flex:1;overflow-y:auto;padding:14px 16px 20px; }
+  .mgmt-body::-webkit-scrollbar { display:none; }
+
+  /* ── DETAIL / EDIT PANEL ── */
+  .detail-panel { position:absolute;inset:0;background:var(--bg);z-index:160;flex-direction:column;border-radius:48px;overflow:hidden;transform:translateY(100%);transition:transform 0.28s cubic-bezier(.4,0,.2,1);display:none; }
+  .detail-panel.open { transform:translateY(0);display:flex; }
+  .detail-header { display:flex;align-items:center;gap:12px;padding:50px 18px 14px;flex-shrink:0;border-bottom:1px solid var(--border); }
+  .detail-body { flex:1;overflow-y:auto;padding:16px; }
+  .detail-body::-webkit-scrollbar { display:none; }
+  .field-row { margin-bottom:14px; }
+  .field-label { font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px; }
+  .field-input { width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;transition:border-color 0.2s; }
+  .field-input:focus { border-color:var(--teal); }
+  .field-select { width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;-webkit-appearance:none;cursor:pointer; }
+  .field-select:focus { border-color:var(--teal); }
+  .save-btn { width:100%;background:var(--grad);border:none;border-radius:14px;padding:14px;font-family:var(--font);font-size:15px;font-weight:700;color:#1a2030;cursor:pointer;margin-top:8px;transition:opacity 0.15s; }
+  .save-btn:active { opacity:0.8; }
+  .delete-btn { width:100%;background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.3);border-radius:14px;padding:12px;font-family:var(--font);font-size:14px;font-weight:600;color:var(--red);cursor:pointer;margin-top:8px; }
+  .settle-btn { width:100%;background:rgba(102,234,185,0.12);border:1px solid rgba(102,234,185,0.3);border-radius:14px;padding:12px;font-family:var(--font);font-size:14px;font-weight:600;color:var(--green);cursor:pointer;margin-top:8px; }
+
+  /* ── LIST ITEMS ── */
+  .list-item { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s; }
+  .list-item:last-child { border-bottom:none; }
+  .list-item:active { opacity:0.7; }
+  .list-ico { width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0; }
+  .list-info { flex:1;min-width:0; }
+  .list-name { font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .list-sub { font-size:11px;color:var(--text3);margin-top:1px; }
+  .list-right { text-align:right;flex-shrink:0; }
+  .list-val { font-size:13px;font-weight:700; }
+  .list-date { font-size:10px;color:var(--text3);margin-top:2px; }
+  .list-arrow { color:var(--text3);font-size:16px;margin-left:4px;flex-shrink:0; }
+
+  /* ── STATUS BADGES ── */
+  .badge { display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
+  .badge-g { background:rgba(102,234,185,0.15);color:var(--green); }
+  .badge-r { background:rgba(255,107,107,0.15);color:var(--red); }
+  .badge-a { background:rgba(255,179,71,0.15);color:var(--amber); }
+  .badge-b { background:rgba(95,199,254,0.15);color:var(--teal); }
+
+  /* ── SEARCH BAR ── */
+  .search-bar { display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 14px;margin-bottom:12px; }
+  .search-bar input { flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text); }
+  .search-bar input::placeholder { color:var(--text3); }
 </style>
 </head>
 <body>
@@ -292,10 +369,161 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════ SIDE DRAWER ═══════════════════════════════ -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div class="drawer-logo">
+        <div class="drawer-logo-q">Q</div>
+        <div class="drawer-name">Qeema</div>
+      </div>
+      <div class="drawer-sub">Your Personal CFO</div>
+    </div>
+    <div class="drawer-nav">
+      <div class="drawer-section">Main</div>
+      <div class="drawer-item active" onclick="closeDrawer();switchTab('dashboard')">
+        <div class="drawer-item-ico" style="background:rgba(95,199,254,0.12)">⌂</div>
+        <span class="drawer-item-label">Dashboard</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();switchTab('chat')">
+        <div class="drawer-item-ico" style="background:rgba(102,234,185,0.12)">✦</div>
+        <span class="drawer-item-label">AI Chat</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();switchTab('transactions')">
+        <div class="drawer-item-ico" style="background:rgba(95,199,254,0.10)">≡</div>
+        <span class="drawer-item-label">Transactions</span>
+        <span class="drawer-item-count" id="d-txn-count">–</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();switchTab('reports')">
+        <div class="drawer-item-ico" style="background:rgba(102,234,185,0.10)">◎</div>
+        <span class="drawer-item-label">Reports</span>
+      </div>
+      <div class="drawer-section">Data Management</div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('commitments')">
+        <div class="drawer-item-ico" style="background:rgba(255,179,71,0.12)">📅</div>
+        <span class="drawer-item-label">Commitments</span>
+        <span class="drawer-item-count" id="d-cmt-count">–</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('assets')">
+        <div class="drawer-item-ico" style="background:rgba(102,234,185,0.12)">🏠</div>
+        <span class="drawer-item-label">Assets</span>
+        <span class="drawer-item-count" id="d-ast-count">–</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('liabilities')">
+        <div class="drawer-item-ico" style="background:rgba(255,107,107,0.12)">🏦</div>
+        <span class="drawer-item-label">Liabilities</span>
+        <span class="drawer-item-count" id="d-lib-count">–</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('accounts')">
+        <div class="drawer-item-ico" style="background:rgba(95,199,254,0.12)">💳</div>
+        <span class="drawer-item-label">Accounts</span>
+        <span class="drawer-item-count" id="d-acc-count">–</span>
+      </div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('tags')">
+        <div class="drawer-item-ico" style="background:rgba(161,139,252,0.12)">🏷</div>
+        <span class="drawer-item-label">Tags</span>
+        <span class="drawer-item-count" id="d-tag-count">–</span>
+      </div>
+      <div class="drawer-section">Settings</div>
+      <div class="drawer-item" onclick="closeDrawer();openMgmt('settings')">
+        <div class="drawer-item-ico" style="background:rgba(95,199,254,0.10)">⚙️</div>
+        <span class="drawer-item-label">Assumptions & FX</span>
+      </div>
+    </div>
+    <div class="drawer-footer">Qeema v65 · March 2026 · AED</div>
+  </div>
+
+  <!-- ═══════════════════ MANAGEMENT SCREENS ═══════════════════ -->
+
+  <!-- COMMITMENTS MGMT -->
+  <div class="mgmt-screen" id="mgmt-commitments">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('commitments')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Commitments</div>
+      <button class="mgmt-add" onclick="openDetail('commitment',null)">+</button>
+    </div>
+    <div class="mgmt-body" id="mgmt-cmt-list"></div>
+  </div>
+
+  <!-- ASSETS MGMT -->
+  <div class="mgmt-screen" id="mgmt-assets">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('assets')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Assets</div>
+      <button class="mgmt-add" onclick="openDetail('asset',null)">+</button>
+    </div>
+    <div class="mgmt-body" id="mgmt-ast-list"></div>
+  </div>
+
+  <!-- LIABILITIES MGMT -->
+  <div class="mgmt-screen" id="mgmt-liabilities">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('liabilities')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Liabilities</div>
+      <button class="mgmt-add" onclick="openDetail('liability',null)">+</button>
+    </div>
+    <div class="mgmt-body" id="mgmt-lib-list"></div>
+  </div>
+
+  <!-- ACCOUNTS MGMT -->
+  <div class="mgmt-screen" id="mgmt-accounts">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('accounts')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Accounts</div>
+      <button class="mgmt-add" onclick="openDetail('account',null)">+</button>
+    </div>
+    <div class="mgmt-body" id="mgmt-acc-list"></div>
+  </div>
+
+  <!-- TAGS MGMT -->
+  <div class="mgmt-screen" id="mgmt-tags">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('tags')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Tags</div>
+      <button class="mgmt-add" onclick="openDetail('tag',null)">+</button>
+    </div>
+    <div class="mgmt-body" id="mgmt-tag-list"></div>
+  </div>
+
+  <!-- SETTINGS MGMT -->
+  <div class="mgmt-screen" id="mgmt-settings">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('settings')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title">Assumptions & FX</div>
+    </div>
+    <div class="mgmt-body" id="mgmt-settings-body"></div>
+  </div>
+
+  <!-- ═══════════════════ DETAIL / EDIT PANEL ═══════════════════ -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+      <div class="mgmt-back" onclick="closeDetail()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title" id="detail-title">Details</div>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+
   <!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
   <div class="screen active" id="screen-dashboard">
     <div class="screen-hdr">
-      <div>
+      <div class="hamburger" onclick="openDrawer()">
+        <span></span><span></span><span></span>
+      </div>
+      <div style="flex:1">
         <div class="h-greeting">Good morning, Rabie</div>
         <div class="h-sub" id="dash-date">March 2026 · AED</div>
       </div>
@@ -382,7 +610,8 @@
   <!-- ═══════════════════════════════ AI CHAT ═══════════════════════════════ -->
   <div class="screen" id="screen-chat">
     <div class="chat-header">
-      <div>
+      <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
+      <div style="flex:1;padding-left:4px">
         <div style="font-size:18px;font-weight:700" class="grad-text">Qeema AI</div>
         <div style="font-size:11px;color:var(--text3)">Your personal CFO · powered by Claude</div>
       </div>
@@ -429,8 +658,15 @@
   <!-- ═══════════════════════════════ TRANSACTIONS ═══════════════════════════════ -->
   <div class="screen" id="screen-transactions">
     <div class="screen-hdr">
-      <div style="font-size:20px;font-weight:700;color:var(--text)">Transactions</div>
+      <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);flex:1">Transactions</div>
       <div style="font-size:12px;color:var(--teal);font-weight:600" id="txn-period">2026</div>
+    </div>
+    <div style="padding:0 16px 8px;flex-shrink:0">
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="text" placeholder="Search transactions…" id="txn-search" oninput="filterTxnsSearch(this.value)">
+      </div>
     </div>
     <div class="filter-row">
       <div class="ftab active" onclick="filterTxns('all', this)">All</div>
@@ -462,7 +698,8 @@
   <!-- ═══════════════════════════════ REPORTS ═══════════════════════════════ -->
   <div class="screen" id="screen-reports">
     <div class="screen-hdr">
-      <div style="font-size:20px;font-weight:700;color:var(--text)">Reports</div>
+      <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);flex:1">Reports</div>
       <div style="font-size:12px;color:var(--text3)">Live · AED</div>
     </div>
     <div class="scroll-area">
@@ -593,7 +830,7 @@ function showToast(msg, isError=false) {
 async function loadAll() {
   try {
     [allTxns, allCommitments, allLiabilities, allAssets] = await Promise.all([
-      sbGet('transactions','order=txn_date.desc&limit=200'),
+      sbGet('transactions','order=txn_date.desc&limit=300'),
       sbGet('commitments','order=expected_date.asc'),
       sbGet('liabilities','status=eq.Active'),
       sbGet('assets','select=*')
@@ -601,6 +838,7 @@ async function loadAll() {
     renderDashboard();
     renderTransactions();
     renderReports();
+    updateDrawerCounts();
     document.getElementById('loading').style.display = 'none';
   } catch(e) {
     document.getElementById('loading').innerHTML = `<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">Connection error.<br>Check your network.</div>`;
@@ -731,31 +969,10 @@ function renderDashboard() {
 function renderTransactions(filter='all') {
   let txns = [...allTxns];
   if (filter === 'Expense' || filter === 'Income') txns = txns.filter(t=>t.direction===filter);
-  if (filter === 'Jan') txns = txns.filter(t=>t.txn_date.startsWith('2026-01'));
-  if (filter === 'Feb') txns = txns.filter(t=>t.txn_date.startsWith('2026-02'));
-  if (filter === 'Mar') txns = txns.filter(t=>t.txn_date.startsWith('2026-03'));
-
-  const totalIn  = txns.filter(t=>t.direction==='Income').reduce((s,t)=>s+t.amount_base,0);
-  const totalOut = txns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+t.amount_base,0);
-  document.getElementById('txn-in').textContent  = fmtFull(totalIn);
-  document.getElementById('txn-out').textContent = fmtFull(totalOut);
-
-  document.getElementById('txn-list').innerHTML = txns.slice(0,40).map(t => `
-    <div class="txn">
-      <div class="txn-ico" style="background:${catColors[t.category]||'rgba(95,199,254,0.08)'}">
-        ${catIcons[t.category]||'💳'}
-      </div>
-      <div class="txn-info">
-        <div class="txn-name">${t.description}</div>
-        <div class="txn-cat">${t.category}${t.subcategory?' · '+t.subcategory:''} · ${t.txn_method||''}</div>
-      </div>
-      <div class="txn-right">
-        <div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">
-          ${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base)}
-        </div>
-        <div class="txn-date">${fmtDate(t.txn_date)}</div>
-      </div>
-    </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions found</div>';
+  if (filter === 'Jan') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-01'));
+  if (filter === 'Feb') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-02'));
+  if (filter === 'Mar') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-03'));
+  renderTxnList(txns);
 }
 
 function filterTxns(filter, el) {
@@ -1440,6 +1657,623 @@ function toggleVoice() {
 const chatInput = document.getElementById('chat-input');
 chatInput.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
 chatInput.addEventListener('input', () => { chatInput.style.height='auto'; chatInput.style.height=Math.min(chatInput.scrollHeight,100)+'px'; });
+
+// ── Drawer ──
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── Management Screens ──
+let currentMgmt = null;
+function openMgmt(type) {
+  currentMgmt = type;
+  document.getElementById('mgmt-' + type).classList.add('open');
+  renderMgmt(type);
+}
+function closeMgmt(type) {
+  document.getElementById('mgmt-' + type).classList.remove('open');
+  currentMgmt = null;
+}
+
+async function renderMgmt(type) {
+  if (type === 'commitments') {
+    const list = document.getElementById('mgmt-cmt-list');
+    const data = await sbGet('commitments', 'order=expected_date.asc');
+    list.innerHTML = '';
+    const byStatus = { Pending: [], Settled: [], Cancelled: [] };
+    data.forEach(c => { (byStatus[c.status] || byStatus.Pending).push(c); });
+    ['Pending', 'Settled'].forEach(status => {
+      if (!byStatus[status].length) return;
+      const sec = document.createElement('div');
+      sec.innerHTML = `<div class="section-label">${status}</div>`;
+      const card = document.createElement('div');
+      card.className = 'card';
+      byStatus[status].forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.onclick = () => openDetail('commitment', c);
+        item.innerHTML = `
+          <div class="list-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div>
+          <div class="list-info">
+            <div class="list-name">${c.description}</div>
+            <div class="list-sub">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''}</div>
+          </div>
+          <div class="list-right">
+            <div class="list-val ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div>
+            <div class="list-date"><span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div>
+          </div>
+          <span class="list-arrow">›</span>`;
+        card.appendChild(item);
+      });
+      sec.appendChild(card);
+      list.appendChild(sec);
+    });
+  }
+
+  else if (type === 'assets') {
+    const list = document.getElementById('mgmt-ast-list');
+    const data = await sbGet('assets', 'order=asset_type.asc');
+    list.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    const total = data.reduce((s,a) => s+(a.current_value_base||0), 0);
+    const totDiv = document.createElement('div');
+    totDiv.style.cssText = 'display:flex;justify-content:space-between;padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px';
+    totDiv.innerHTML = `<span style="font-size:12px;color:var(--text3)">Total Asset Value</span><span style="font-size:14px;font-weight:700;color:var(--green)">AED ${fmtFull(total)}</span>`;
+    card.appendChild(totDiv);
+    data.forEach(a => {
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.onclick = () => openDetail('asset', a);
+      const typeIco = {Property:'🏠',Vehicle:'🚗',Jewelry:'💍',Investment:'📈',Cash:'💵',Other:'📦'}[a.asset_type]||'📦';
+      item.innerHTML = `
+        <div class="list-ico" style="background:rgba(102,234,185,0.10)">${typeIco}</div>
+        <div class="list-info">
+          <div class="list-name">${a.asset_name}</div>
+          <div class="list-sub">${a.asset_type} · ${a.location||''}</div>
+        </div>
+        <div class="list-right">
+          <div class="list-val" style="color:var(--green)">${fmtFull(a.current_value_base||0)}</div>
+          <div class="list-date">AED</div>
+        </div>
+        <span class="list-arrow">›</span>`;
+      card.appendChild(item);
+    });
+    list.appendChild(card);
+  }
+
+  else if (type === 'liabilities') {
+    const list = document.getElementById('mgmt-lib-list');
+    const data = await sbGet('liabilities', 'order=status.asc');
+    list.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    const total = data.filter(l=>l.status==='Active').reduce((s,l) => {
+      return s + (l.loan_currency==='USD' ? (l.remaining_principal||0)*3.67 : (l.remaining_principal||0));
+    }, 0);
+    const totDiv = document.createElement('div');
+    totDiv.style.cssText = 'display:flex;justify-content:space-between;padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px';
+    totDiv.innerHTML = `<span style="font-size:12px;color:var(--text3)">Total Remaining</span><span style="font-size:14px;font-weight:700;color:var(--red)">AED ${fmtFull(total)}</span>`;
+    card.appendChild(totDiv);
+    data.forEach(l => {
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.onclick = () => openDetail('liability', l);
+      const remaining = l.loan_currency==='USD' ? (l.remaining_principal||0)*3.67 : (l.remaining_principal||0);
+      item.innerHTML = `
+        <div class="list-ico" style="background:rgba(255,107,107,0.10)">🏦</div>
+        <div class="list-info">
+          <div class="list-name">${l.liability_name}</div>
+          <div class="list-sub">${l.interest_type||''} · ${l.annual_int_rate?(l.annual_int_rate*100).toFixed(2)+'%':'0%'} · ${l.remaining_pmts||0} pmts</div>
+        </div>
+        <div class="list-right">
+          <div class="list-val" style="color:var(--red)">${fmtFull(remaining)}</div>
+          <div class="list-date">${l.loan_currency} remaining</div>
+        </div>
+        <span class="list-arrow">›</span>`;
+      card.appendChild(item);
+    });
+    list.appendChild(card);
+  }
+
+  else if (type === 'accounts') {
+    const list = document.getElementById('mgmt-acc-list');
+    const data = await sbGet('accounts', 'order=account_type.asc');
+    list.innerHTML = '';
+    const typeIco = {Bank:'🏦',Cash:'💵',CreditCard:'💳',BNPL:'⏳',Investment:'📈',Savings:'🐖'};
+    const groups = {};
+    data.forEach(a => { if(!groups[a.account_type]) groups[a.account_type]=[]; groups[a.account_type].push(a); });
+    Object.entries(groups).forEach(([grp, items]) => {
+      const sec = document.createElement('div');
+      sec.innerHTML = `<div class="section-label">${grp}</div>`;
+      const card = document.createElement('div');
+      card.className = 'card';
+      items.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.onclick = () => openDetail('account', a);
+        item.innerHTML = `
+          <div class="list-ico" style="background:rgba(95,199,254,0.10)">${typeIco[a.account_type]||'💳'}</div>
+          <div class="list-info">
+            <div class="list-name">${a.method_name}</div>
+            <div class="list-sub">${a.currency_code} · <span class="badge ${a.core_flag==='Core'?'badge-b':'badge-a'}">${a.core_flag}</span></div>
+          </div>
+          <div class="list-right">
+            <div class="list-val" style="color:${(a.open_bal_base||0)>=0?'var(--green)':'var(--red)'}">${fmtFull(Math.abs(a.open_bal_base||0))}</div>
+            <div class="list-date">${a.is_active==='Y'?'Active':'Inactive'}</div>
+          </div>
+          <span class="list-arrow">›</span>`;
+        card.appendChild(item);
+      });
+      sec.appendChild(card);
+      list.appendChild(sec);
+    });
+  }
+
+  else if (type === 'tags') {
+    const list = document.getElementById('mgmt-tag-list');
+    const data = await sbGet('tags', 'order=tag_name.asc');
+    list.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    const tagColors = ['#5FC7FE','#66EAB9','#ffb347','#ff6b6b','#a78bfa','#34d399','#f472b6'];
+    data.forEach((t, i) => {
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.onclick = () => openDetail('tag', t);
+      item.innerHTML = `
+        <div class="list-ico" style="background:rgba(161,139,252,0.12);color:${tagColors[i%tagColors.length]};font-size:14px;font-weight:700">#</div>
+        <div class="list-info">
+          <div class="list-name">${t.tag_name}</div>
+          <div class="list-sub">${t.description||'No description'}</div>
+        </div>
+        <span class="list-arrow">›</span>`;
+      card.appendChild(item);
+    });
+    list.appendChild(card);
+  }
+
+  else if (type === 'settings') {
+    const body = document.getElementById('mgmt-settings-body');
+    const [asms, fxRates] = await Promise.all([
+      sbGet('assumptions', 'order=parameter.asc'),
+      sbGet('fx_rates', 'order=currency_code.asc')
+    ]);
+    body.innerHTML = '';
+
+    // Assumptions
+    const sec1 = document.createElement('div');
+    sec1.innerHTML = '<div class="section-label">Model Assumptions</div>';
+    const card1 = document.createElement('div');
+    card1.className = 'card';
+    asms.forEach(a => {
+      const val = a.value_num !== null ? a.value_num : (a.value_text || a.value_date || '');
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)';
+      row.innerHTML = `
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">${a.parameter}</div>
+          <div style="font-size:11px;color:var(--text3)">${a.notes||''}</div>
+        </div>
+        <input class="field-input" style="width:100px;text-align:right;padding:6px 10px"
+          value="${val}" data-id="${a.id}" data-param="${a.parameter}"
+          onblur="saveAssumption(this)">`;
+      card1.appendChild(row);
+    });
+    sec1.appendChild(card1);
+    body.appendChild(sec1);
+
+    // FX Rates
+    const sec2 = document.createElement('div');
+    sec2.innerHTML = '<div class="section-label" style="margin-top:16px">FX Rates (per 1 unit to AED)</div>';
+    const card2 = document.createElement('div');
+    card2.className = 'card';
+    fxRates.forEach(f => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)';
+      row.innerHTML = `
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${f.currency_code}</div>
+          <div style="font-size:11px;color:var(--text3)">${f.currency_name}</div>
+        </div>
+        <input class="field-input" style="width:90px;text-align:right;padding:6px 10px"
+          value="${f.rate_to_base}" data-code="${f.currency_code}"
+          onblur="saveFxRate(this)" ${f.currency_code==='AED'?'disabled':''}>`;
+      card2.appendChild(row);
+    });
+    sec2.appendChild(card2);
+    body.appendChild(sec2);
+  }
+}
+
+async function saveAssumption(input) {
+  const param = input.dataset.param;
+  const val = parseFloat(input.value) || input.value;
+  await fetch(`${SB_URL}/rest/v1/assumptions?parameter=eq.${encodeURIComponent(param)}`, {
+    method:'PATCH', headers,
+    body: JSON.stringify({ value_num: typeof val === 'number' ? val : null, value_text: typeof val === 'string' ? val : null })
+  });
+  showToast('✓ ' + param + ' updated');
+}
+
+async function saveFxRate(input) {
+  const code = input.dataset.code;
+  const rate = parseFloat(input.value);
+  if (isNaN(rate)) return;
+  await fetch(`${SB_URL}/rest/v1/fx_rates?currency_code=eq.${code}`, {
+    method:'PATCH', headers, body: JSON.stringify({ rate_to_base: rate })
+  });
+  showToast('✓ ' + code + ' rate updated');
+}
+
+// ── Detail Panel ──
+let currentDetailType = null;
+let currentDetailItem = null;
+let detailItemStore = {};
+
+function openDetail(type, item) {
+  currentDetailType = type;
+  currentDetailItem = item;
+  // Store item by temp key to avoid JSON serialization issues in onclick
+  const key = 'item_' + Date.now();
+  detailItemStore[key] = item;
+
+  const panel = document.getElementById('detail-panel');
+  const title = document.getElementById('detail-title');
+  const body = document.getElementById('detail-body');
+
+  const isNew = !item;
+  title.textContent = isNew
+    ? 'New ' + type.charAt(0).toUpperCase() + type.slice(1)
+    : 'Edit ' + type.charAt(0).toUpperCase() + type.slice(1);
+
+  body.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0">Loading…</div>';
+  panel.style.display = 'flex';
+  setTimeout(() => {
+    panel.classList.add('open');
+    if (type === 'transaction') renderTxnDetail(item, body, isNew);
+    else if (type === 'commitment') renderCmtDetail(item, body, isNew);
+    else if (type === 'asset') renderAstDetail(item, body, isNew);
+    else if (type === 'liability') renderLibDetail(item, body, isNew);
+    else if (type === 'account') renderAccDetail(item, body, isNew);
+    else if (type === 'tag') renderTagDetail(item, body, isNew);
+  }, 10);
+}
+
+function closeDetail() {
+  const panel = document.getElementById('detail-panel');
+  panel.classList.remove('open');
+  setTimeout(() => { panel.style.display = 'none'; if (currentMgmt) renderMgmt(currentMgmt); }, 280);
+}
+
+function field(label, id, value, type='text', options=null) {
+  if (options) {
+    const opts = options.map(o => `<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('');
+    return `<div class="field-row"><div class="field-label">${label}</div><select class="field-select" id="df-${id}"><option value="">Select…</option>${opts}</select></div>`;
+  }
+  return `<div class="field-row"><div class="field-label">${label}</div><input class="field-input" id="df-${id}" type="${type}" value="${value??''}"></div>`;
+}
+function fv(id) { const el = document.getElementById('df-'+id); return el ? el.value : ''; }
+
+function renderTxnDetail(t, body, isNew) {
+  const dirs = ['Expense','Income'];
+  const methods = ['ENBD AED Account','EI AED Account','WIO AED Account','WIO Credit Card','Tabby Card','Tabby Pay Later','LBC CAD Credit Card','Cash - AED','Cash - USD','Splitwise Account','Nour Account'];
+  const ccys = ['AED','USD','EUR','GBP','CAD','SAR'];
+  const tags = ['Home','Rabie','Nour','Kids','Lilia','Nawwar','Maid','Parents','Insurance','Lebanon Apartment','Other','Jana'];
+  const recogs = ['Immediate','Spread','Deferred'];
+  body.innerHTML = `
+    ${field('Description','description', t?.description)}
+    ${field('Date','txn_date', t?.txn_date, 'date')}
+    ${field('Direction','direction', t?.direction, 'text', dirs)}
+    ${field('Category','category', t?.category)}
+    ${field('Subcategory','subcategory', t?.subcategory)}
+    ${field('Amount (Original)','amount_original', t?.amount_original, 'number')}
+    ${field('Currency','currency_code', t?.currency_code||'AED','text',ccys)}
+    ${field('Amount (AED)','amount_base', t?.amount_base, 'number')}
+    ${field('Method','txn_method', t?.txn_method,'text',methods)}
+    ${field('Tags','tags', t?.tags,'text',tags)}
+    ${field('Core Flag','core_flag', t?.core_flag||'Core','text',['Core','Non-Core'])}
+    ${field('Recognition','val_recog_type', t?.val_recog_type||'Immediate','text',recogs)}
+    ${field('Notes','notes', t?.notes)}
+    <button class="save-btn" onclick="saveTxnDetail(${t?.id||'null'})">Save Transaction</button>
+    ${!isNew ? `<button class="delete-btn" onclick="deleteItem('transactions','id',${t?.id})">Delete Transaction</button>` : ''}`;
+}
+
+function renderCmtDetail(c, body, isNew) {
+  const dirs = ['Expense','Income'];
+  const statuses = ['Pending','Settled','Cancelled'];
+  body.innerHTML = `
+    ${field('Description','description', c?.description)}
+    ${field('Expected Date','expected_date', c?.expected_date, 'date')}
+    ${field('Direction','direction', c?.direction,'text',dirs)}
+    ${field('Amount (AED)','amount_base', c?.amount_base, 'number')}
+    ${field('Currency','currency_code', c?.currency_code||'AED')}
+    ${field('Amount (Original)','amount_original', c?.amount_original, 'number')}
+    ${field('Category','category', c?.category)}
+    ${field('Subcategory','subcategory', c?.subcategory)}
+    ${field('Tags','tags', c?.tags)}
+    ${field('Monthly Accrual (K)','monthly_k', c?.monthly_k, 'number')}
+    ${field('Status','status', c?.status||'Pending','text',statuses)}
+    ${field('Notes','notes', c?.notes)}
+    <button class="save-btn" onclick="saveCmtDetail(${c?.id||'null'})">Save Commitment</button>
+    ${!isNew && c?.status==='Pending' ? `<button class="settle-btn" onclick="settleCommitment(${c?.id})">Mark as Settled</button>` : ''}
+    ${!isNew ? `<button class="delete-btn" onclick="deleteItem('commitments','id',${c?.id})">Delete</button>` : ''}`;
+}
+
+function renderAstDetail(a, body, isNew) {
+  const types = ['Property','Vehicle','Jewelry','Investment','Cash','Other'];
+  const ccys = ['AED','USD','EUR','GBP','CAD'];
+  body.innerHTML = `
+    ${field('Asset ID','asset_id', a?.asset_id)}
+    ${field('Asset Name','asset_name', a?.asset_name)}
+    ${field('Type','asset_type', a?.asset_type,'text',types)}
+    ${field('Purchase Date','purchase_date', a?.purchase_date,'date')}
+    ${field('Purchase Price','purchase_price', a?.purchase_price,'number')}
+    ${field('Purchase Currency','purchase_ccy', a?.purchase_ccy||'AED','text',ccys)}
+    ${field('Purchase Price (AED)','purchase_price_base', a?.purchase_price_base,'number')}
+    ${field('Current Value','current_value', a?.current_value,'number')}
+    ${field('Current Currency','current_value_ccy', a?.current_value_ccy||'AED','text',ccys)}
+    ${field('Current Value (AED)','current_value_base', a?.current_value_base,'number')}
+    ${field('Has Liability','has_liability', a?.has_liability||'N','text',['Y','N'])}
+    ${field('Linked Liability ID','liability_id', a?.liability_id)}
+    ${field('Location','location', a?.location)}
+    ${field('Notes','notes', a?.notes)}
+    <button class="save-btn" onclick="saveAstDetail('${a?.asset_id||''}',${isNew})">Save Asset</button>
+    ${!isNew ? `<button class="delete-btn" onclick="deleteItem('assets','asset_id','${a?.asset_id}')">Delete Asset</button>` : ''}`;
+}
+
+function renderLibDetail(l, body, isNew) {
+  const types = ['Personal Loan','Mortgage','Car Loan','Credit Card','BNPL','Other'];
+  const intTypes = ['Reducing Balance','Flat'];
+  const ccys = ['AED','USD','EUR','GBP','CAD'];
+  body.innerHTML = `
+    ${field('Liability ID','liability_id', l?.liability_id)}
+    ${field('Name','liability_name', l?.liability_name)}
+    ${field('Type','liability_type', l?.liability_type,'text',types)}
+    ${field('Linked Asset ID','linked_asset_id', l?.linked_asset_id)}
+    ${field('Original Principal','original_principal', l?.original_principal,'number')}
+    ${field('Annual Rate (%)','annual_int_rate', l?.annual_int_rate?+(l.annual_int_rate*100).toFixed(4):0,'number')}
+    ${field('Interest Type','interest_type', l?.interest_type,'text',intTypes)}
+    ${field('Start Date','start_date', l?.start_date,'date')}
+    ${field('Term (months)','orig_term_months', l?.orig_term_months,'number')}
+    ${field('Monthly Payment','monthly_payment', l?.monthly_payment,'number')}
+    ${field('Currency','loan_currency', l?.loan_currency||'AED','text',ccys)}
+    ${field('Lender','lender', l?.lender)}
+    ${field('Remaining Principal','remaining_principal', l?.remaining_principal,'number')}
+    ${field('Remaining Payments','remaining_pmts', l?.remaining_pmts,'number')}
+    ${field('Status','status', l?.status||'Active','text',['Active','Settled','Cancelled'])}
+    ${field('Notes','notes', l?.notes)}
+    <button class="save-btn" onclick="saveLibDetail('${l?.liability_id||''}',${isNew})">Save Liability</button>`;
+}
+
+function renderAccDetail(a, body, isNew) {
+  const types = ['Bank','Cash','CreditCard','BNPL','Investment','Savings'];
+  const ccys = ['AED','USD','EUR','GBP','CAD','SAR','LBP'];
+  body.innerHTML = `
+    ${field('Account Name','method_name', a?.method_name)}
+    ${field('Type','account_type', a?.account_type,'text',types)}
+    ${field('Currency','currency_code', a?.currency_code||'AED','text',ccys)}
+    ${field('Opening Balance','open_bal_original', a?.open_bal_original,'number')}
+    ${field('Opening Balance (AED)','open_bal_base', a?.open_bal_base,'number')}
+    ${field('BNPL Default Months','bnpl_default_months', a?.bnpl_default_months,'number')}
+    ${field('Active','is_active', a?.is_active||'Y','text',['Y','N'])}
+    ${field('Core Flag','core_flag', a?.core_flag||'Core','text',['Core','Non-Core'])}
+    <button class="save-btn" onclick="saveAccDetail(${a?.id||'null'},${isNew})">Save Account</button>
+    ${!isNew ? `<button class="delete-btn" onclick="deleteItem('accounts','id',${a?.id})">Delete Account</button>` : ''}`;
+}
+
+function renderTagDetail(t, body, isNew) {
+  body.innerHTML = `
+    ${field('Tag Name','tag_name', t?.tag_name)}
+    ${field('Description','description', t?.description)}
+    <button class="save-btn" onclick="saveTagDetail(${t?.id||'null'},${isNew})">Save Tag</button>
+    ${!isNew ? `<button class="delete-btn" onclick="deleteItem('tags','id',${t?.id})">Delete Tag</button>` : ''}`;
+}
+
+// ── Save handlers ──
+async function saveTxnDetail(id) {
+  const obj = {
+    description: fv('description'), txn_date: fv('txn_date'), direction: fv('direction'),
+    category: fv('category'), subcategory: fv('subcategory') || null,
+    amount_original: parseFloat(fv('amount_original'))||0, currency_code: fv('currency_code'),
+    amount_base: parseFloat(fv('amount_base'))||0, txn_method: fv('txn_method'),
+    tags: fv('tags'), core_flag: fv('core_flag'), val_recog_type: fv('val_recog_type'),
+    notes: fv('notes')||null
+  };
+  if (id && id !== 'null') {
+    await fetch(`${SB_URL}/rest/v1/transactions?id=eq.${id}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Transaction updated');
+  } else {
+    const res = await sbPost('transactions', obj);
+    if (res && !res.error) { allTxns.unshift(res[0]||obj); showToast('✓ Transaction saved'); }
+  }
+  renderTransactions(currentFilter); renderDashboard(); renderReports();
+  closeDetail();
+}
+
+async function saveCmtDetail(id) {
+  const obj = {
+    description: fv('description'), expected_date: fv('expected_date')||null,
+    direction: fv('direction'), amount_base: parseFloat(fv('amount_base'))||0,
+    currency_code: fv('currency_code'), amount_original: parseFloat(fv('amount_original'))||0,
+    category: fv('category'), subcategory: fv('subcategory')||null,
+    tags: fv('tags'), monthly_k: parseFloat(fv('monthly_k'))||0,
+    status: fv('status'), notes: fv('notes')||null
+  };
+  if (id && id !== 'null') {
+    await fetch(`${SB_URL}/rest/v1/commitments?id=eq.${id}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Commitment updated');
+  } else {
+    await sbPost('commitments', obj);
+    showToast('✓ Commitment saved');
+  }
+  const fresh = await sbGet('commitments','order=expected_date.asc');
+  allCommitments = fresh;
+  renderDashboard(); renderReports(); closeDetail();
+}
+
+async function settleCommitment(id) {
+  await fetch(`${SB_URL}/rest/v1/commitments?id=eq.${id}`, { method:'PATCH', headers, body: JSON.stringify({status:'Settled'}) });
+  showToast('✓ Commitment settled');
+  const fresh = await sbGet('commitments','order=expected_date.asc');
+  allCommitments = fresh;
+  renderDashboard(); renderReports(); closeDetail();
+}
+
+async function saveAstDetail(assetId, isNew) {
+  const obj = {
+    asset_id: fv('asset_id'), asset_name: fv('asset_name'), asset_type: fv('asset_type'),
+    purchase_date: fv('purchase_date')||null, purchase_price: parseFloat(fv('purchase_price'))||0,
+    purchase_ccy: fv('purchase_ccy'), purchase_price_base: parseFloat(fv('purchase_price_base'))||0,
+    current_value: parseFloat(fv('current_value'))||0, current_value_ccy: fv('current_value_ccy'),
+    current_value_base: parseFloat(fv('current_value_base'))||0,
+    has_liability: fv('has_liability'), liability_id: fv('liability_id')||null,
+    location: fv('location'), notes: fv('notes')||null
+  };
+  if (!isNew && assetId) {
+    await fetch(`${SB_URL}/rest/v1/assets?asset_id=eq.${assetId}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Asset updated');
+  } else {
+    await sbPost('assets', obj);
+    showToast('✓ Asset saved');
+  }
+  allAssets = await sbGet('assets','select=*');
+  renderDashboard(); renderReports(); closeDetail();
+}
+
+async function saveLibDetail(libId, isNew) {
+  const rate = parseFloat(fv('annual_int_rate'))||0;
+  const obj = {
+    liability_id: fv('liability_id'), liability_name: fv('liability_name'),
+    liability_type: fv('liability_type'), linked_asset_id: fv('linked_asset_id')||null,
+    original_principal: parseFloat(fv('original_principal'))||0,
+    annual_int_rate: rate/100, interest_type: fv('interest_type'),
+    start_date: fv('start_date')||null, orig_term_months: parseInt(fv('orig_term_months'))||null,
+    monthly_payment: parseFloat(fv('monthly_payment'))||0, loan_currency: fv('loan_currency'),
+    lender: fv('lender'), remaining_principal: parseFloat(fv('remaining_principal'))||0,
+    remaining_pmts: parseInt(fv('remaining_pmts'))||0, status: fv('status'), notes: fv('notes')||null
+  };
+  if (!isNew && libId) {
+    await fetch(`${SB_URL}/rest/v1/liabilities?liability_id=eq.${libId}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Liability updated');
+  } else {
+    await sbPost('liabilities', obj);
+    showToast('✓ Liability saved');
+  }
+  allLiabilities = await sbGet('liabilities','status=eq.Active');
+  renderDashboard(); renderReports(); closeDetail();
+}
+
+async function saveAccDetail(id, isNew) {
+  const obj = {
+    method_name: fv('method_name'), account_type: fv('account_type'),
+    currency_code: fv('currency_code'), open_bal_original: parseFloat(fv('open_bal_original'))||0,
+    open_bal_base: parseFloat(fv('open_bal_base'))||0,
+    bnpl_default_months: parseInt(fv('bnpl_default_months'))||null,
+    is_active: fv('is_active'), core_flag: fv('core_flag')
+  };
+  if (id && id !== 'null') {
+    await fetch(`${SB_URL}/rest/v1/accounts?id=eq.${id}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Account updated');
+  } else {
+    await sbPost('accounts', obj);
+    showToast('✓ Account saved');
+  }
+  closeDetail();
+}
+
+async function saveTagDetail(id, isNew) {
+  const obj = { tag_name: fv('tag_name'), description: fv('description')||null };
+  if (id && id !== 'null') {
+    await fetch(`${SB_URL}/rest/v1/tags?id=eq.${id}`, { method:'PATCH', headers, body: JSON.stringify(obj) });
+    showToast('✓ Tag updated');
+  } else {
+    await sbPost('tags', obj);
+    showToast('✓ Tag saved');
+  }
+  closeDetail();
+}
+
+async function deleteItem(table, keyCol, keyVal) {
+  if (!confirm('Delete this item? This cannot be undone.')) return;
+  await fetch(`${SB_URL}/rest/v1/${table}?${keyCol}=eq.${keyVal}`, { method:'DELETE', headers });
+  showToast('✓ Deleted');
+  if (table === 'transactions') {
+    allTxns = allTxns.filter(t => t[keyCol] != keyVal);
+    renderTransactions(currentFilter); renderDashboard(); renderReports();
+  } else if (table === 'assets') {
+    allAssets = allAssets.filter(a => a[keyCol] != keyVal);
+    renderDashboard(); renderReports();
+  }
+  closeDetail();
+}
+
+// ── Transaction tap to edit ──
+function renderTxnItem(t, idx) {
+  const ico = catIcons[t.category]||'💳';
+  const bg = catColors[t.category]||'rgba(95,199,254,0.08)';
+  return `<div class="txn" onclick="openTxnDetail(${idx})" style="cursor:pointer">
+    <div class="txn-ico" style="background:${bg}">${ico}</div>
+    <div class="txn-info">
+      <div class="txn-name">${t.description||''}</div>
+      <div class="txn-cat">${t.category||''}${t.subcategory?' · '+t.subcategory:''} · ${t.txn_method||''}</div>
+    </div>
+    <div class="txn-right">
+      <div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base||0)}</div>
+      <div class="txn-date">${t.txn_date?fmtDate(t.txn_date):''}</div>
+    </div>
+    <span class="list-arrow">›</span>
+  </div>`;
+}
+
+// Store filtered txns for index lookup
+let currentTxnList = [];
+function openTxnDetail(idx) {
+  openDetail('transaction', currentTxnList[idx]);
+}
+
+// ── Search transactions ──
+function filterTxnsSearch(q) {
+  const lower = q.toLowerCase();
+  const filtered = lower ? allTxns.filter(t =>
+    t.description?.toLowerCase().includes(lower) ||
+    t.category?.toLowerCase().includes(lower) ||
+    t.tags?.toLowerCase().includes(lower)
+  ) : allTxns;
+  renderTxnList(filtered);
+}
+
+function renderTxnList(txns) {
+  currentTxnList = txns;
+  const totalIn  = txns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
+  const totalOut = txns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
+  document.getElementById('txn-in').textContent  = fmtFull(totalIn);
+  document.getElementById('txn-out').textContent = fmtFull(totalOut);
+  document.getElementById('txn-list').innerHTML = txns.slice(0,80).map((t,i) => renderTxnItem(t,i)).join('') ||
+    '<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions found</div>';
+}
+
+// ── Update drawer counts ──
+async function updateDrawerCounts() {
+  document.getElementById('d-txn-count').textContent = allTxns.length;
+  document.getElementById('d-cmt-count').textContent = allCommitments.filter(c=>c.status==='Pending').length;
+  document.getElementById('d-ast-count').textContent = allAssets.length;
+  document.getElementById('d-lib-count').textContent = allLiabilities.length;
+  // Fetch accounts and tags counts
+  try {
+    const [accs, tags] = await Promise.all([
+      sbGet('accounts','select=id'),
+      sbGet('tags','select=id')
+    ]);
+    document.getElementById('d-acc-count').textContent = accs.length;
+    document.getElementById('d-tag-count').textContent = tags.length;
+  } catch(e) {}
+}
 
 // ── Init ──
 loadAll();
