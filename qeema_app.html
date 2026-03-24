@@ -889,63 +889,103 @@ function computeKPIs() {
   const wmStart = reportYear * 100 + windowStart;
   const wmEnd = reportYear * 100 + windowEnd;
   
-  // ── SAVINGS RATE: (CoreInc - CoreExp) / CoreInc — value recognition basis ──
+  // ── SAVINGS RATE ──
+  // Excel: SUM(Hlpr row17) / SUM(Hlpr row12) over window
+  // = (CoreIncVal - CoreExpVal) / CoreIncVal
+  // Sources: Inputs_Actuals (MonthlyK, value basis) + Settled non-BNPL Commitments (MonthlyK, value basis)
   let coreInc = 0, coreExp = 0;
+  
+  // 1) Transactions — value recognition
   for (let m = windowStart; m <= windowEnd; m++) {
     const ym = reportYear * 100 + m;
     txns.forEach(t => {
       if (ym < t.valYM || ym > t.valEndYM) return;
-      const isNonCore = (t.core_flag||'').toLowerCase() === 'non-core';
-      if (isNonCore) return;
+      if ((t.core_flag||'').toLowerCase() === 'non-core') return;
       if (t.direction === 'Income') coreInc += t.monthlyK;
       else coreExp += t.monthlyK;
     });
   }
+  
+  // 2) Settled non-BNPL commitments — value recognition
+  // Excel adds: SUMIFS(Commitments Z col, Direction, CoreFlag<>Non-Core, Type<>BNPL, Status=Settled, ValStartYM<=M, ValEndYM>=M)
+  allCommitments.forEach(c => {
+    if (c.status === 'Pending') return;
+    if ((c.description||'').toLowerCase().includes('bnpl')) return; // Skip BNPL-type
+    if ((c.core_flag||'').toLowerCase() === 'non-core') return;
+    
+    const mk = +(c.monthly_k || c.amount_base || 0);
+    if (mk === 0) return;
+    
+    // Determine value recognition window for this commitment
+    const settledYM = dateToYM(c.actual_date || c.expected_date);
+    const prepMo = +(c.prepaid_mo || 0);
+    let cValStart = settledYM;
+    let cValEnd = settledYM;
+    if (prepMo > 1 && (c.actual_date || c.expected_date)) {
+      const sd = new Date(c.actual_date || c.expected_date);
+      sd.setMonth(sd.getMonth() + prepMo - 1);
+      cValEnd = sd.getFullYear() * 100 + (sd.getMonth() + 1);
+    }
+    
+    // Monthly amount for spread commitments
+    const monthlyAmt = prepMo > 1 ? mk : +(c.amount_base || 0);
+    
+    for (let m = windowStart; m <= windowEnd; m++) {
+      const ym = reportYear * 100 + m;
+      if (ym < cValStart || ym > cValEnd) continue;
+      if (c.direction === 'Income') coreInc += monthlyAmt;
+      else coreExp += monthlyAmt;
+    }
+  });
+  
   const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
   
-  // ── DTI: avg(loan+BNPL dues) / avg(committed income) — matches Excel Rpt_FreeCash ──
-  // Loan dues from loan_schedule in window
+  // ── DTI ──
+  // Excel: AVG(LoanDue + BNPLDue) / AVG(CommittedIncome) per month in window
+  // CommittedIncome = ONLY pending income commitments due within each month's salary cycle
+  // NOT actual transaction income!
+  
+  // Loan dues from loan_schedule (pending payments in window)
   let loanDues = 0;
   allLoanSchedule.forEach(s => {
     const sYM = dateToYM(s.due_date);
     if (sYM >= wmStart && sYM <= wmEnd) {
+      // Include both pending and settled (the schedule amount is the due amount)
       loanDues += +(s.exp_amt_base || s.expected_amt || 0);
     }
   });
-  // BNPL dues: pending BNPL commitments in window
+  
+  // BNPL dues: BNPL-type pending commitments in window
   let bnplDues = 0;
-  allCommitments.filter(c => c.status === 'Pending' && c.direction === 'Expense').forEach(c => {
-    // Check if this looks like a BNPL commitment (settle_method or description hints)
+  allCommitments.forEach(c => {
+    if (c.status !== 'Pending') return;
     const cYM = dateToYM(c.expected_date);
-    if (cYM >= wmStart && cYM <= wmEnd) {
-      // Only count if it's from a BNPL source (approximate)
-      const desc = (c.description || '').toLowerCase();
-      if (desc.includes('tabby') || desc.includes('bnpl') || desc.includes('tamara')) {
-        bnplDues += +(c.amount_base || 0);
-      }
-    }
+    if (cYM < wmStart || cYM > wmEnd) return;
+    // Check if this is a BNPL commitment (type field or description)
+    const desc = (c.description || '').toLowerCase();
+    const isBNPL = desc.includes('tabby') || desc.includes('bnpl') || desc.includes('tamara');
+    if (isBNPL) bnplDues += +(c.amount_base || 0);
   });
+  
   const avgMonthlyDebt = (loanDues + bnplDues) / windowMonths;
   
-  // Committed income: pending+settled income commitments + actual income txns in window
+  // Committed income: ONLY pending income commitments in window (NOT transaction income)
+  // Excel: SUMIFS(Commitments AmountBase, Direction=Income, Status=Pending, Type<>BNPL, 
+  //         ExpectedDate >= monthStart AND ExpectedDate < nextMonthStart)
   let committedIncome = 0;
   allCommitments.forEach(c => {
-    if (c.direction !== 'Income') return;
-    const cYM = dateToYM(c.expected_date || c.actual_date);
+    if (c.status !== 'Pending' || c.direction !== 'Income') return;
+    const cYM = dateToYM(c.expected_date);
     if (cYM >= wmStart && cYM <= wmEnd) {
       committedIncome += +(c.amount_base || 0);
     }
   });
-  // Add actual income from transactions
-  txns.forEach(t => {
-    if (t.direction !== 'Income') return;
-    if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
-    committedIncome += t.amtBase;
-  });
+  
   const avgMonthlyCommIncome = committedIncome / windowMonths;
   const dti = avgMonthlyCommIncome > 0 ? avgMonthlyDebt / avgMonthlyCommIncome : 0;
   
-  // ── DSCR: sum(core cash inflows) / sum(total settlements) — matches Excel Rpt_CashFlow ──
+  // ── DSCR ──
+  // Excel: SUM(CoreInflows) / SUM(TotalSettlements) from Rpt_CashFlow over window
   let cashInflows = 0;
   txns.forEach(t => {
     if (t.direction !== 'Income') return;
@@ -953,6 +993,16 @@ function computeKPIs() {
     if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
     cashInflows += t.amtBase;
   });
+  // Add settled non-BNPL income commitments (cash basis)
+  allCommitments.forEach(c => {
+    if (c.status === 'Pending' || c.direction !== 'Income') return;
+    if ((c.core_flag||'').toLowerCase() === 'non-core') return;
+    const cYM = dateToYM(c.actual_date || c.expected_date);
+    if (cYM >= wmStart && cYM <= wmEnd) {
+      cashInflows += +(c.amount_base || 0);
+    }
+  });
+  
   let totalSettlements = 0;
   allLoanSchedule.filter(s => s.status === 'Settled').forEach(s => {
     const sYM = dateToYM(s.due_date);
@@ -962,18 +1012,13 @@ function computeKPIs() {
   });
   const dscr = totalSettlements > 0 ? cashInflows / totalSettlements : 99;
   
-  // ── DISCRETIONARY %: disc expenses / total expenses — cash basis, uses categories table ──
-  // Build discretionary category set from loaded categories
+  // ── DISCRETIONARY % ──
   const discCatSet = new Set();
-  allCategories.forEach(c => {
-    if (c.discretionary === 'Yes') discCatSet.add(c.category);
-  });
-  // Fallback if categories not loaded
+  allCategories.forEach(c => { if (c.discretionary === 'Yes') discCatSet.add(c.category); });
   if (discCatSet.size === 0) {
     ['Business Services','Dining','Entertainment','Gifts/Donations','Household Items','Personal','Travel']
       .forEach(c => discCatSet.add(c));
   }
-  
   let cashExpTotal = 0, cashExpDisc = 0;
   txns.forEach(t => {
     if (t.direction !== 'Expense') return;
