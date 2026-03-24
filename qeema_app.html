@@ -806,7 +806,7 @@ function computeBS() {
   // Liquid Cash = Bank + Cash accounts, EXCLUDING Non-Core, using open_bal_original (native ccy, no FX)
   let liquidCash = 0;
   allAccounts.forEach(a => {
-    if (['Bank','Cash'].includes(a.account_type) && a.core_flag !== 'Non-Core') {
+    if (['Bank','Cash'].includes(a.account_type) && (a.core_flag||'').toLowerCase() !== 'non-core') {
       liquidCash += +(a.open_bal_original || 0);
     }
   });
@@ -830,8 +830,13 @@ function computeBS() {
   // Loan Obligations
   const loanOblig = allLiabilities.reduce((s, l) => s + +(l.remaining_principal || 0), 0);
 
-  // Pending Commitments (amount_base, which is already in AED)
-  const pendingCmts = allCommitments.filter(c => c.status === 'Pending')
+  // Pending Commitments — matching Excel: SUMIFS(AmountBase, Status="Pending", ExpectedYM <= currentYM)
+  // Excel sums ALL pending (income + expense) with expected date up to current month
+  // Income commitments naturally fall out because they have future dates
+  const _now = new Date();
+  const _currentYM = _now.getFullYear() * 100 + (_now.getMonth() + 1);
+  const pendingCmts = allCommitments
+    .filter(c => c.status === 'Pending' && c.expected_date && dateToYM(c.expected_date) <= _currentYM)
     .reduce((s, c) => s + +(c.amount_base || 0), 0);
 
   const totalLiab = ccBal + bnplBal + loanOblig + pendingCmts;
@@ -868,40 +873,47 @@ function computeIS() {
 function computeKPIs() {
   const txns = allTxns.map(enrichTxn);
   
-  // Get all months that have transaction data (by value date)
-  const allYMs = new Set();
-  txns.forEach(t => {
-    for (let ym = t.valYM; ym <= t.valEndYM; ) {
-      allYMs.add(ym);
-      const yr = Math.floor(ym / 100), mo = ym % 100;
-      ym = mo === 12 ? (yr + 1) * 100 + 1 : yr * 100 + (mo + 1);
-    }
-  });
+  // Sum on VALUE-RECOGNITION basis across report year (Jan-Dec 2026)
+  // For each month, each transaction contributes monthlyK if that month falls in its spread window
+  // This matches Excel Hlpr_Aggregation rows 12-17
+  const reportYear = 2026;
+  let coreInc = 0, nonCoreInc = 0, coreExp = 0, nonCoreExp = 0;
+  let monthsWithIncome = 0;
+  
+  for (let m = 1; m <= 12; m++) {
+    const ym = reportYear * 100 + m;
+    let mInc = 0, mExp = 0;
+    txns.forEach(t => {
+      if (ym < t.valYM || ym > t.valEndYM) return;
+      if (t.direction === 'Income') {
+        mInc += t.monthlyK;
+        if ((t.core_flag||'').toLowerCase() !== 'non-core') coreInc += t.monthlyK;
+        else nonCoreInc += t.monthlyK;
+      } else {
+        mExp += t.monthlyK;
+        if ((t.core_flag||'').toLowerCase() !== 'non-core') coreExp += t.monthlyK;
+        else nonCoreExp += t.monthlyK;
+      }
+    });
+    if (mInc > 0) monthsWithIncome++;
+  }
 
-  // Sum income and expenses on value-recognition basis across ALL months with data
-  let totalInc = 0, totalExp = 0, nonCoreExp = 0;
-  txns.forEach(t => {
-    const months = [];
-    for (let ym = t.valYM; ym <= t.valEndYM; ) {
-      months.push(ym);
-      const yr = Math.floor(ym / 100), mo = ym % 100;
-      ym = mo === 12 ? (yr + 1) * 100 + 1 : yr * 100 + (mo + 1);
-    }
-    const contribution = t.monthlyK * months.length;
-    if (t.direction === 'Income') totalInc += contribution;
-    else {
-      totalExp += contribution;
-      if (t.core_flag === 'Non-Core') nonCoreExp += contribution;
-    }
-  });
-
-  const savingsRate = totalInc > 0 ? (totalInc - totalExp) / totalInc : 0;
+  const totalInc = coreInc + nonCoreInc;
+  const totalExp = coreExp + nonCoreExp;
+  
+  // Savings Rate = (Core Income - Core Expense) / Core Income (matches Excel)
+  const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
+  
+  // DTI = Annual Loan Payments / Annual Income
   const loanPmtMonthly = allLiabilities.reduce((s, l) => s + +(l.monthly_payment || 0), 0);
   const loanPmtAnnual = loanPmtMonthly * 12;
   const dti = totalInc > 0 ? loanPmtAnnual / totalInc : 0;
-  const monthCount = allYMs.size || 1;
-  const avgMonthlyInc = totalInc / monthCount;
+  
+  // DSCR = Average Monthly Income / Monthly Loan Payment
+  const avgMonthlyInc = monthsWithIncome > 0 ? totalInc / monthsWithIncome : 0;
   const dscr = loanPmtMonthly > 0 ? avgMonthlyInc / loanPmtMonthly : 99;
+  
+  // Discretionary % = Non-Core Expense / Total Expense  
   const discPct = totalExp > 0 ? nonCoreExp / totalExp : 0;
 
   return { savingsRate, dti, dscr, discPct, totalInc, totalExp };
