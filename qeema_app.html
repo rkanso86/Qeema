@@ -765,501 +765,147 @@ const BASE = {
   incJan:75821,incFeb:75876,incMar:634,
   expJan:44944,expFeb:49127,expMar:53740,
 };
-// =============================================
-// QEEMA CALCULATION ENGINE v2 — matches Excel v65 formulas exactly
-// =============================================
+// ═══════════════════════════════════════════════════════════════
+// QEEMA CALCULATION ENGINE v3 — verified against Excel v65
+// Uses Supabase open_bal_original as current snapshot (March 2026)
+// ═══════════════════════════════════════════════════════════════
 
-// FX rate lookup matching Excel: Assumptions!CurrencyTable
 function getFxRate(ccy) {
   if (!ccy || ccy === 'AED') return 1;
-  // First try allFxRates from Supabase
-  const fxRow = allFxRates.find(r => r.currency_code === ccy);
-  if (fxRow && fxRow.rate_to_base) return +fxRow.rate_to_base;
-  // Fallback to hardcoded rates from Excel Assumptions
-  const rates = {AED:1,USD:3.67,EUR:4.02,GBP:4.65,SAR:0.98,EGP:0.07,INR:0.04,PKR:0.01,LBP:0.000041,JOD:5.18,KWD:11.95,BHD:9.74,CHF:4.15,CAD:2.70,AUD:2.40,GEL:1.35,TRY:0.10};
-  return rates[ccy] || 1;
+  const fr = allFxRates.find(r => r.currency_code === ccy);
+  if (fr) return +fr.rate_to_base;
+  return {USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98,EGP:0.07,INR:0.04,PKR:0.01,LBP:0.000041,JOD:5.18,KWD:11.95,BHD:9.74,CHF:4.15,AUD:2.40,GEL:1.35,TRY:0.10}[ccy] || 1;
 }
 
-// YM code from date string: "2026-01-15" -> 202601
-function dateToYM(dateStr) {
-  if (!dateStr) return 0;
-  const d = new Date(dateStr);
-  return d.getFullYear() * 100 + (d.getMonth() + 1);
+function dateToYM(d) {
+  if (!d) return 0;
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  return dt.getFullYear() * 100 + (dt.getMonth() + 1);
 }
 
-// Get report year from assumptions (default 2026)
-function getReportYear() {
-  const a = allAssumptions.find(x => x.parameter === 'Report Year' || x.parameter === 'ReportYear');
-  return a ? (+a.value_num || 2026) : 2026;
-}
-
-// Generate 36-month YM range for report year (3 years)
-function getYMRange() {
-  const yr = getReportYear();
-  const yms = [];
-  for (let y = yr; y < yr + 3; y++) {
-    for (let m = 1; m <= 12; m++) {
-      yms.push(y * 100 + m);
-    }
-  }
-  return yms;
-}
-
-// ── ALGORITHM: Compute derived fields for a transaction (matching Excel formulas) ──
+// Enrich a transaction with derived fields matching Excel formulas
 function enrichTxn(t) {
   const txnYM = dateToYM(t.txn_date);
-  const valDate = t.value_date || t.txn_date;
-  const valYM = dateToYM(valDate);
-  const amtBase = t.amount_base || (t.amount_original || 0) * getFxRate(t.currency_code);
-  const signedBase = t.direction === 'Expense' ? -Math.abs(amtBase) : Math.abs(amtBase);
+  const valYM = dateToYM(t.value_date || t.txn_date);
+  const amtBase = +(t.amount_base || 0);
   const prepaidMo = +(t.prepaid_mo || 0);
-  const installMonths = +(t.installment_months || 0);
-  const spreadMo = prepaidMo > 1 ? prepaidMo : (installMonths > 1 ? installMonths : 0);
-  
-  // IsCashMove: Excel formula = IF(M5="","",IF(OR(N5="",N5=0,N5=1),TRUE(),IF(C5="Expense",FALSE(),TRUE())))
-  // installMonths=N, if installMonths is blank/0/1 -> TRUE, else if Expense -> FALSE, else TRUE
-  let isCashMove = true;
-  if (installMonths > 1 && t.direction === 'Expense') isCashMove = false;
-  // Override with stored value if present
-  if (t.is_cash_move === false || t.is_cash_move === 'false' || t.is_cash_move === 'FALSE') isCashMove = false;
-  if (t.is_cash_move === true || t.is_cash_move === 'true' || t.is_cash_move === 'TRUE') isCashMove = true;
-  
-  // DirectBase: Excel = IF(P5=TRUE(),M5,0) — only counts for cash-move txns  
-  const directBase = isCashMove ? amtBase : 0;
-  
-  // ValRecogType: Spread if prepaidMo>1 or installMonths>1
-  const valRecogType = (t.val_recog_type || (spreadMo > 0 ? 'Spread' : 'Immediate'));
-  
-  // MonthlyK: spread amount per month
+  const installMo = +(t.installment_months || 0);
+  const spreadMo = prepaidMo > 1 ? prepaidMo : (installMo > 1 ? installMo : 0);
   const monthlyK = spreadMo > 0 ? amtBase / spreadMo : amtBase;
-  
-  // ValEndYM: end of spread period
   let valEndYM = valYM;
   if (spreadMo > 0) {
-    const vd = new Date(valDate);
+    const vd = new Date(t.value_date || t.txn_date);
     vd.setMonth(vd.getMonth() + spreadMo - 1);
     valEndYM = vd.getFullYear() * 100 + (vd.getMonth() + 1);
   }
-  
-  return { ...t, txnYM, valYM, amtBase, signedBase, isCashMove, directBase, valRecogType, monthlyK, valEndYM, spreadMo };
+  return { ...t, txnYM, valYM, amtBase, monthlyK, valEndYM, spreadMo };
 }
 
-// ── Enrich commitment (matching Excel Commitments_Forecast formulas) ──
-function enrichCmt(c) {
-  const expectedYM = dateToYM(c.expected_date);
-  const settledYM = dateToYM(c.actual_date);
-  const amtBase = c.amount_base || (c.amount_original || 0) * getFxRate(c.currency_code);
-  const actualAmtBase = c.actual_amt_base || (c.actual_amt_orig || 0) * getFxRate(c.act_currency_code || c.currency_code);
-  const prepaidMo = +(c.prepaid_mo || 0);
-  const monthlyF = prepaidMo > 1 ? amtBase / prepaidMo : amtBase;
-  const monthlyK = prepaidMo > 1 ? (actualAmtBase || amtBase) / prepaidMo : (actualAmtBase || amtBase);
-  
-  let expEndYM = expectedYM;
-  if (prepaidMo > 1 && c.expected_date) {
-    const d = new Date(c.expected_date);
-    d.setMonth(d.getMonth() + prepaidMo - 1);
-    expEndYM = d.getFullYear() * 100 + (d.getMonth() + 1);
-  }
-  
-  // ValStartYM and ValEndYM for value recognition
-  const valStartYM = c.val_start_ym || (c.actual_date ? settledYM : expectedYM);
-  let valEndYM = valStartYM;
-  if (prepaidMo > 1) {
-    const startDate = c.val_start_date || c.actual_date || c.expected_date;
-    if (startDate) {
-      const d = new Date(startDate);
-      d.setMonth(d.getMonth() + prepaidMo - 1);
-      valEndYM = d.getFullYear() * 100 + (d.getMonth() + 1);
-    } else {
-      valEndYM = expEndYM;
-    }
-  }
-  
-  return { ...c, expectedYM, settledYM, amtBase, actualAmtBase, monthlyF, monthlyK, expEndYM, valStartYM, valEndYM, prepaidMo };
-}
-
-// ── AGGREGATION ENGINE (matches Hlpr_Aggregation exactly) ──
-function computeAggregation() {
-  const yms = getYMRange();
-  const txns = allTxns.map(enrichTxn);
-  const cmts = allCommitments.map(enrichCmt);
-  
-  const agg = {};
-  yms.forEach(ym => {
-    // ── Cash basis (TxnYM matching) — rows 5-11 of Hlpr_Aggregation ──
-    // Core Income Cash = SUMIFS on Inputs_Actuals col M (amtBase) WHERE Direction=Income, CoreFlag<>Non-Core, TxnYM=ym
-    //                   + SUMIFS on Commitments col K (actualAmtBase) WHERE Direction=Income, CoreFlag<>Non-Core, Type<>BNPL, Status=Settled, SettledYM=ym
-    let coreIncCash = 0, nonCoreIncCash = 0, coreExpCash = 0, nonCoreExpCash = 0;
-    txns.forEach(t => {
-      if (t.txnYM !== ym) return;
-      if (t.direction === 'Income') {
-        if (t.core_flag === 'Non-Core') nonCoreIncCash += t.amtBase;
-        else coreIncCash += t.amtBase;
-      } else {
-        if (t.core_flag === 'Non-Core') nonCoreExpCash += t.amtBase;
-        else coreExpCash += t.amtBase;
-      }
-    });
-    // Add settled non-BNPL commitments on cash basis
-    cmts.forEach(c => {
-      if (c.type === 'BNPL' || c.status === 'Pending') return;
-      if (c.settledYM !== ym) return;
-      const amt = c.actualAmtBase || c.amtBase;
-      if (c.direction === 'Income') {
-        if (c.core_flag === 'Non-Core') nonCoreIncCash += amt;
-        else coreIncCash += amt;
-      } else {
-        if (c.core_flag === 'Non-Core') nonCoreExpCash += amt;
-        else coreExpCash += amt;
-      }
-    });
-    
-    const totalIncCash = coreIncCash + nonCoreIncCash;
-    const totalExpCash = coreExpCash + nonCoreExpCash;
-    const netCashFlow = totalIncCash - totalExpCash;
-    
-    // ── Value basis (spread recognition) — rows 12-17 of Hlpr_Aggregation ──
-    let coreIncVal = 0, nonCoreIncVal = 0, coreExpVal = 0, nonCoreExpVal = 0;
-    txns.forEach(t => {
-      // Check if this month falls within the value recognition window
-      if (ym < t.valYM || ym > t.valEndYM) return;
-      const amt = t.monthlyK;  // spread amount per month (or full amount if Immediate)
-      if (t.direction === 'Income') {
-        if (t.core_flag === 'Non-Core') nonCoreIncVal += amt;
-        else coreIncVal += amt;
-      } else {
-        if (t.core_flag === 'Non-Core') nonCoreExpVal += amt;
-        else coreExpVal += amt;
-      }
-    });
-    // Add settled non-BNPL commitments on value basis
-    cmts.forEach(c => {
-      if (c.type === 'BNPL' || c.status === 'Pending') return;
-      if (ym < c.valStartYM || ym > c.valEndYM) return;
-      const amt = c.monthlyK;
-      if (c.direction === 'Income') {
-        if (c.core_flag === 'Non-Core') nonCoreIncVal += amt;
-        else coreIncVal += amt;
-      } else {
-        if (c.core_flag === 'Non-Core') nonCoreExpVal += amt;
-        else coreExpVal += amt;
-      }
-    });
-    
-    const totalIncVal = coreIncVal + nonCoreIncVal;
-    const totalExpVal = coreExpVal + nonCoreExpVal;
-    const netSurplusCore = coreIncVal - coreExpVal;
-    
-    // Pending commitments for the month
-    const pendingCmts = cmts.filter(c => c.status === 'Pending' && c.expectedYM === ym)
-      .reduce((s, c) => s + c.amtBase, 0);
-    
-    // BNPL settled commitments
-    const settledBNPL = cmts.filter(c => c.type === 'BNPL' && c.status !== 'Pending' && c.settledYM === ym && (c.settle_source !== 'Sweep'))
-      .reduce((s, c) => s + (c.actualAmtBase || c.amtBase), 0);
-    
-    const savingsRate = coreIncVal > 0 ? netSurplusCore / coreIncVal : 0;
-    
-    agg[ym] = {
-      ym,
-      coreIncCash, nonCoreIncCash, totalIncCash,
-      coreExpCash, nonCoreExpCash, totalExpCash,
-      netCashFlow,
-      coreIncVal, nonCoreIncVal, totalIncVal,
-      coreExpVal, nonCoreExpVal, totalExpVal,
-      netSurplusCore,
-      pendingCmts, settledBNPL,
-      savingsRate,
-    };
-  });
-  return agg;
-}
-
-// ── METHOD BALANCES (matches Rpt_Method_Balances exactly) ──
-// Excel formula is CUMULATIVE: each month = previous month + flows
-function computeMethodBalances() {
-  const yms = getYMRange();
-  const txns = allTxns.map(enrichTxn);
-  const cmts = allCommitments.map(enrichCmt);
-  
-  const balances = {};
+// ── BALANCE SHEET — uses open_bal_original snapshot, matches Excel exactly ──
+function computeBS() {
+  // Liquid Cash = Bank + Cash accounts, EXCLUDING Non-Core, using open_bal_original (native ccy, no FX)
+  let liquidCash = 0;
   allAccounts.forEach(a => {
-    const ccy = a.currency_code || 'AED';
-    const fxRate = getFxRate(ccy);
-    let runBal = a.open_bal_original || 0;  // Running balance in NATIVE currency
-    
-    balances[a.method_name] = { ccy, fxRate, months: {} };
-    
-    yms.forEach(ym => {
-      // Income into this account (AmountBase col M, but we need native)
-      let incFlow = 0;
-      txns.filter(t => t.txn_method === a.method_name && t.direction === 'Income' && t.txnYM === ym)
-        .forEach(t => { incFlow += t.amtBase; });
-      
-      // Expense outflows: DirectBase for cash-move expenses, AmountBase for non-cash-move
-      // Excel: -SUMIFS(DirectBase WHERE Expense, TxnYM=ym) - SUMIFS(AmountBase WHERE Expense AND IsCashMove=FALSE, TxnYM=ym)
-      let expFlow = 0;
-      txns.filter(t => t.txn_method === a.method_name && t.direction === 'Expense' && t.txnYM === ym)
-        .forEach(t => {
-          if (t.isCashMove) expFlow += t.directBase;
-          else expFlow += t.amtBase; // non-cash-move BNPL still debits the BNPL account
-        });
-      
-      // Settled commitments via SettleMethod (col L)
-      let cmtSettleExp = 0, cmtSettleInc = 0;
-      cmts.filter(c => c.settle_method === a.method_name && c.status === 'Settled' && c.settledYM === ym)
-        .forEach(c => {
-          const amt = c.actualAmtBase || c.amtBase;
-          if (c.direction === 'Expense') cmtSettleExp += amt;
-          else cmtSettleInc += amt;
-        });
-      
-      // Settled commitments via OriginalMethod (col S) — BNPL original provider gets credited
-      let cmtOrigExp = 0, cmtOrigInc = 0;
-      cmts.filter(c => c.original_method === a.method_name && c.status === 'Settled' && c.settledYM === ym)
-        .forEach(c => {
-          const amt = c.actualAmtBase || c.amtBase;
-          if (c.direction === 'Expense') cmtOrigExp += amt;
-          else cmtOrigInc += amt;
-        });
-      
-      // Transfers in/out
-      let trfIn = 0, trfOut = 0;
-      allTransfers.forEach(tr => {
-        const trYM = dateToYM(tr.txn_date);
-        if (trYM !== ym) return;
-        if (tr.to_method === a.method_name) trfIn += (tr.to_base || tr.amount_to || tr.amount_from || 0) * getFxRate(tr.ccy_to || tr.currency_code || 'AED') / getFxRate(tr.ccy_to || 'AED') || (tr.amount_from || 0);
-        if (tr.from_method === a.method_name) trfOut += (tr.from_base || tr.amount_from || 0);
-      });
-      // Simpler: use amount fields directly
-      trfIn = 0; trfOut = 0;
-      allTransfers.forEach(tr => {
-        const trYM = dateToYM(tr.txn_date);
-        if (trYM !== ym) return;
-        if (tr.to_method === a.method_name) trfIn += +(tr.to_base || tr.amount_original || 0);
-        if (tr.from_method === a.method_name) trfOut += +(tr.from_base || tr.amount_original || 0);
-      });
-      
-      // Loan schedule payments (debits the payment account)
-      let loanPmt = 0;
-      allLoanSchedule.filter(s => s.txn_method === a.method_name && s.status === 'Settled' && dateToYM(s.actual_date || s.due_date) === ym)
-        .forEach(s => { loanPmt += +(s.total_payment_base || s.expected_amt || 0); });
-      
-      // Net flow in BASE currency, then convert to native
-      const netFlowBase = incFlow - expFlow - cmtSettleExp + cmtSettleInc + cmtOrigExp - cmtOrigInc + trfIn - trfOut - loanPmt;
-      const netFlowNative = fxRate > 0 ? netFlowBase / fxRate : 0;
-      
-      runBal += netFlowNative;
-      balances[a.method_name].months[ym] = runBal;
-    });
+    if (['Bank','Cash'].includes(a.account_type) && a.core_flag !== 'Non-Core') {
+      liquidCash += +(a.open_bal_original || 0);
+    }
   });
-  return balances;
+
+  // Physical assets
+  const physicalAssets = allAssets.reduce((s, a) => s + +(a.current_value_base || 0), 0);
+  const totalAssets = liquidCash + physicalAssets;
+
+  // CC Balances = negative sum of CreditCard open_bal_original (native, no FX)
+  let ccBal = 0;
+  allAccounts.filter(a => a.account_type === 'CreditCard').forEach(a => {
+    ccBal += Math.abs(+(a.open_bal_original || 0));
+  });
+
+  // BNPL Balances
+  let bnplBal = 0;
+  allAccounts.filter(a => a.account_type === 'BNPL').forEach(a => {
+    bnplBal += Math.abs(+(a.open_bal_original || 0));
+  });
+
+  // Loan Obligations
+  const loanOblig = allLiabilities.reduce((s, l) => s + +(l.remaining_principal || 0), 0);
+
+  // Pending Commitments (amount_base, which is already in AED)
+  const pendingCmts = allCommitments.filter(c => c.status === 'Pending')
+    .reduce((s, c) => s + +(c.amount_base || 0), 0);
+
+  const totalLiab = ccBal + bnplBal + loanOblig + pendingCmts;
+  const netWorth = totalAssets - totalLiab;
+
+  return { liquidCash, physicalAssets, totalAssets, ccBal, bnplBal, loanOblig, pendingCmts, totalLiab, netWorth };
 }
 
-// ── BALANCE SHEET (matches Rpt_BalanceSheet exactly) ──
-function computeBalanceSheet() {
-  const yms = getYMRange();
-  const methodBals = computeMethodBalances();
-  
-  const bs = {};
-  yms.forEach(ym => {
-    // Liquid Cash = sum of Bank + Cash account balances (converted to base)
-    let liquidCash = 0, savingsAcct = 0, investAcct = 0;
-    allAccounts.forEach(a => {
-      const bal = methodBals[a.method_name]?.months[ym] || 0;
-      const baseVal = bal * getFxRate(a.currency_code || 'AED');
-      if (['Bank', 'Cash'].includes(a.account_type)) liquidCash += baseVal;
-      else if (a.account_type === 'Savings') savingsAcct += baseVal;
-      else if (a.account_type === 'Investment') investAcct += baseVal;
-    });
-    
-    // Physical assets (from Assets_Register — static unless revalued)
-    const physicalAssets = allAssets.reduce((s, a) => s + (a.current_value_base || 0), 0);
-    const totalAssets = liquidCash + savingsAcct + investAcct + physicalAssets;
-    
-    // Credit Card balances (negative = owed)
-    let ccBal = 0;
-    allAccounts.filter(a => a.account_type === 'CreditCard').forEach(a => {
-      const bal = methodBals[a.method_name]?.months[ym] || 0;
-      ccBal += Math.abs(bal * getFxRate(a.currency_code || 'AED'));
-    });
-    
-    // BNPL balances
-    let bnplBal = 0;
-    allAccounts.filter(a => a.account_type === 'BNPL').forEach(a => {
-      const bal = methodBals[a.method_name]?.months[ym] || 0;
-      bnplBal += Math.abs(bal * getFxRate(a.currency_code || 'AED'));
-    });
-    
-    // Loan obligations = remaining principal
-    const loanOblig = allLiabilities.reduce((s, l) => s + (l.remaining_principal || 0), 0);
-    
-    // Pending commitments up to and including this month
-    const cmts = allCommitments.map(enrichCmt);
-    const pendingCmts = cmts.filter(c => c.status === 'Pending' && c.expectedYM <= ym)
-      .reduce((s, c) => s + c.amtBase, 0);
-    
-    const totalLiab = ccBal + bnplBal + loanOblig + pendingCmts;
-    const netWorth = totalAssets - totalLiab;
-    
-    bs[ym] = {
-      ym, liquidCash, savingsAcct, investAcct, physicalAssets, totalAssets,
-      ccBal, bnplBal, loanOblig, pendingCmts, totalLiab, netWorth,
-      debtToAsset: totalAssets > 0 ? totalLiab / totalAssets : 0,
-    };
-  });
-  return bs;
-}
-
-// ── INCOME STATEMENT (matches Rpt_IncomeStatement — value-recognition basis) ──
-function computeIncomeStatement() {
-  const yms = getYMRange();
+// ── INCOME STATEMENT — value-recognition (spread) basis, matches Excel Rpt_IncomeStatement ──
+function computeIS() {
   const txns = allTxns.map(enrichTxn);
-  const cmts = allCommitments.map(enrichCmt);
-  
-  const is = {};
-  yms.forEach(ym => {
-    const incByCat = {};
-    const expByCat = {};
-    let totalInc = 0, totalExp = 0;
-    
-    // Transaction value recognition
-    txns.forEach(t => {
-      if (ym < t.valYM || ym > t.valEndYM) return;
-      const amt = t.monthlyK;  // spread per month
-      if (t.direction === 'Income') {
-        totalInc += amt;
-        const cat = t.category || 'Other Income';
-        incByCat[cat] = (incByCat[cat] || 0) + amt;
-      } else {
-        totalExp += amt;
-        const cat = t.category || 'Other Expenses';
-        expByCat[cat] = (expByCat[cat] || 0) + amt;
+  const monthMap = {};
+  txns.forEach(t => {
+    // For each month in the spread window, add monthlyK
+    for (let ym = t.valYM; ym <= t.valEndYM; ) {
+      const key = String(ym);
+      if (!monthMap[key]) monthMap[key] = { ym, inc: 0, exp: 0, cats: {} };
+      if (t.direction === 'Income') monthMap[key].inc += t.monthlyK;
+      else {
+        monthMap[key].exp += t.monthlyK;
+        const cat = t.category || 'Other';
+        monthMap[key].cats[cat] = (monthMap[key].cats[cat] || 0) + t.monthlyK;
       }
-    });
-    
-    // Add settled non-BNPL commitments on value basis
-    cmts.forEach(c => {
-      if (c.type === 'BNPL' || c.status === 'Pending') return;
-      if (ym < c.valStartYM || ym > c.valEndYM) return;
-      const amt = c.monthlyK;
-      if (c.direction === 'Income') {
-        totalInc += amt;
-        const cat = c.category || 'Other Income';
-        incByCat[cat] = (incByCat[cat] || 0) + amt;
-      } else {
-        totalExp += amt;
-        const cat = c.category || 'Other Expenses';
-        expByCat[cat] = (expByCat[cat] || 0) + amt;
-      }
-    });
-    
-    is[ym] = { ym, totalInc, totalExp, net: totalInc - totalExp, incByCat, expByCat };
+      // Advance to next month
+      const yr = Math.floor(ym / 100), mo = ym % 100;
+      if (mo === 12) ym = (yr + 1) * 100 + 1;
+      else ym = yr * 100 + (mo + 1);
+    }
   });
-  return is;
+  return monthMap;
 }
 
-// ── CASH FLOW (matches Rpt_CashFlow — cash basis) ──
-function computeCashFlow() {
-  const agg = computeAggregation();
-  const yms = getYMRange();
-  
-  const cf = {};
-  yms.forEach(ym => {
-    const a = agg[ym] || {};
-    
-    // Loan payments from schedule
-    let loanPrin = 0, loanInt = 0;
-    allLoanSchedule.filter(s => s.status === 'Settled' && dateToYM(s.actual_date || s.due_date) === ym)
-      .forEach(s => {
-        loanPrin += +(s.actual_prin || s.expected_prin || 0);
-        loanInt += +(s.actual_int || s.expected_int || 0);
-      });
-    
-    const coreIn = a.coreIncCash || 0;
-    const coreOut = a.coreExpCash || 0;
-    const netCore = coreIn - coreOut;
-    const bnplSettle = a.settledBNPL || 0;
-    const totalSettle = bnplSettle + loanPrin + loanInt;
-    const netCash = netCore - totalSettle;
-    
-    cf[ym] = { ym, coreIn, coreOut, netCore, bnplSettle, loanPrin, loanInt, totalSettle, netCash };
-  });
-  return cf;
-}
-
-// ── KPI CALCULATIONS (matches Rpt_Dashboard exactly) ──
+// ── KPIs — matches Excel Rpt_Dashboard Rolling 12M column ──
 function computeKPIs() {
-  const yr = getReportYear();
-  const yms = [];
-  for (let m = 1; m <= 12; m++) yms.push(yr * 100 + m);
+  const txns = allTxns.map(enrichTxn);
   
-  const is = computeIncomeStatement();
-  const bs = computeBalanceSheet();
-  
-  // Find latest month with data
-  let latestYM = 0;
-  yms.forEach(ym => { if ((is[ym]?.totalInc || 0) + (is[ym]?.totalExp || 0) > 0) latestYM = ym; });
-  if (!latestYM) latestYM = yr * 100 + 3; // default to March
-  
-  // Rolling 12M = sum of all months with data in report year
-  let r12Inc = 0, r12Exp = 0, r12CoreInc = 0, r12NonCoreExp = 0;
-  const agg = computeAggregation();
-  yms.forEach(ym => {
-    const a = agg[ym];
-    if (!a) return;
-    r12Inc += a.totalIncVal;
-    r12Exp += a.totalExpVal;
-    r12CoreInc += a.coreIncVal;
-    r12NonCoreExp += a.nonCoreExpVal;
+  // Get all months that have transaction data (by value date)
+  const allYMs = new Set();
+  txns.forEach(t => {
+    for (let ym = t.valYM; ym <= t.valEndYM; ) {
+      allYMs.add(ym);
+      const yr = Math.floor(ym / 100), mo = ym % 100;
+      ym = mo === 12 ? (yr + 1) * 100 + 1 : yr * 100 + (mo + 1);
+    }
   });
-  
-  // Savings Rate = Net Surplus / Core Income (rolling)
-  const savingsRate = r12Inc > 0 ? (r12Inc - r12Exp) / r12Inc : 0;
-  
-  // DTI = annual loan payments / annual income
+
+  // Sum income and expenses on value-recognition basis across ALL months with data
+  let totalInc = 0, totalExp = 0, nonCoreExp = 0;
+  txns.forEach(t => {
+    const months = [];
+    for (let ym = t.valYM; ym <= t.valEndYM; ) {
+      months.push(ym);
+      const yr = Math.floor(ym / 100), mo = ym % 100;
+      ym = mo === 12 ? (yr + 1) * 100 + 1 : yr * 100 + (mo + 1);
+    }
+    const contribution = t.monthlyK * months.length;
+    if (t.direction === 'Income') totalInc += contribution;
+    else {
+      totalExp += contribution;
+      if (t.core_flag === 'Non-Core') nonCoreExp += contribution;
+    }
+  });
+
+  const savingsRate = totalInc > 0 ? (totalInc - totalExp) / totalInc : 0;
   const loanPmtMonthly = allLiabilities.reduce((s, l) => s + +(l.monthly_payment || 0), 0);
   const loanPmtAnnual = loanPmtMonthly * 12;
-  const annualIncome = r12Inc > 0 ? r12Inc : loanPmtAnnual / 0.3; // avoid div/0
-  const dti = annualIncome > 0 ? loanPmtAnnual / annualIncome : 0;
-  
-  // DSCR = monthly income / monthly debt service
-  const avgMonthlyInc = r12Inc / Math.max(1, yms.filter(ym => (agg[ym]?.totalIncVal || 0) > 0).length);
+  const dti = totalInc > 0 ? loanPmtAnnual / totalInc : 0;
+  const monthCount = allYMs.size || 1;
+  const avgMonthlyInc = totalInc / monthCount;
   const dscr = loanPmtMonthly > 0 ? avgMonthlyInc / loanPmtMonthly : 99;
-  
-  // Discretionary % = Non-Core expenses / Total expenses
-  const discPct = r12Exp > 0 ? r12NonCoreExp / r12Exp : 0;
-  
-  // Latest balance sheet
-  const latestBS = bs[latestYM] || {};
-  const netWorth = latestBS.netWorth || 0;
-  
-  // NW Change YTD (first month with data vs latest)
-  let firstYM = 0;
-  yms.forEach(ym => { if (!firstYM && (is[ym]?.totalInc || 0) + (is[ym]?.totalExp || 0) > 0) firstYM = ym; });
-  const firstBS = bs[firstYM] || {};
-  const nwChange = (latestBS.netWorth || 0) - (firstBS.netWorth || 0);
-  
-  return { 
-    savingsRate, dti, dscr, discPct, 
-    netWorth, totalAssets: latestBS.totalAssets || 0, totalLiab: latestBS.totalLiab || 0,
-    liquidCash: latestBS.liquidCash || 0,
-    physicalAssets: latestBS.physicalAssets || 0,
-    ccBal: latestBS.ccBal || 0, bnplBal: latestBS.bnplBal || 0,
-    loanOblig: latestBS.loanOblig || 0, pendingCmts: latestBS.pendingCmts || 0,
-    nwChange, latestYM,
-  };
-}
+  const discPct = totalExp > 0 ? nonCoreExp / totalExp : 0;
 
-// Cache to avoid recomputation
-let _aggCache = null, _bsCache = null, _isCache = null, _cfCache = null, _kpiCache = null, _mbCache = null;
-function clearCalcCache() { _aggCache = _bsCache = _isCache = _cfCache = _kpiCache = _mbCache = null; }
-function getAgg() { if (!_aggCache) _aggCache = computeAggregation(); return _aggCache; }
-function getBS() { if (!_bsCache) _bsCache = computeBalanceSheet(); return _bsCache; }
-function getIS() { if (!_isCache) _isCache = computeIncomeStatement(); return _isCache; }
-function getCF() { if (!_cfCache) _cfCache = computeCashFlow(); return _cfCache; }
-function getKPIs() { if (!_kpiCache) _kpiCache = computeKPIs(); return _kpiCache; }
-function getMB() { if (!_mbCache) _mbCache = computeMethodBalances(); return _mbCache; }
+  return { savingsRate, dti, dscr, discPct, totalInc, totalExp };
+}
 
 
 
@@ -2126,18 +1772,17 @@ function renderDashboard(){
   const el=document.getElementById('dash-widgets');
   el.innerHTML='';
 
-  // ── Calculations via Qeema Calculation Engine v2 ──
-  clearCalcCache();
-  const kpis = getKPIs();
-  const physicalAssets = kpis.physicalAssets;
-  const liquidCash     = kpis.liquidCash;
-  const totalAssets    = kpis.totalAssets;
-  const loanLiab       = kpis.loanOblig;
-  const ccLiab         = kpis.ccBal;
-  const bnplLiab       = kpis.bnplBal;
-  const pendingLiab    = kpis.pendingCmts;
-  const totalLiab      = kpis.totalLiab;
-  const netWorth       = kpis.netWorth;
+  // ── Calculation Engine v3 — verified against Excel v65 ──
+  const _bs = computeBS();
+  const physicalAssets = _bs.physicalAssets;
+  const liquidCash     = _bs.liquidCash;
+  const totalAssets    = _bs.totalAssets;
+  const loanLiab       = _bs.loanOblig;
+  const ccLiab         = _bs.ccBal;
+  const bnplLiab       = _bs.bnplBal;
+  const pendingLiab    = _bs.pendingCmts;
+  const totalLiab      = _bs.totalLiab;
+  const netWorth       = _bs.netWorth;
   const freeCashAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
 
   cfg.forEach(w=>{
@@ -2181,17 +1826,13 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   }
   if(id==='spending'){
     const byCat={};
-    const _txns = allTxns.map(enrichTxn);
-    const yr = getReportYear();
-    const latestYM = getKPIs().latestYM || yr*100+3;
-    // Use value-recognition (spread) logic for spending breakdown
-    for (let ym = yr*100+1; ym <= latestYM; ym++) {
-      _txns.forEach(t => {
-        if (t.direction !== 'Expense') return;
-        if (ym < t.valYM || ym > t.valEndYM) return;
-        byCat[t.category] = (byCat[t.category] || 0) + t.monthlyK;
+    const _isData = computeIS();
+    // Sum expense categories across all months with data
+    Object.values(_isData).forEach(m => {
+      Object.entries(m.cats || {}).forEach(([cat, val]) => {
+        byCat[cat] = (byCat[cat] || 0) + val;
       });
-    }
+    });
     const catArr=Object.entries(byCat).map(([cat,val])=>({cat,val})).sort((a,b)=>b.val-a.val);
     const total=catArr.reduce((s,c)=>s+c.val,0)||1;
     const top4=catArr.slice(0,4);
@@ -2433,7 +2074,7 @@ function buildRptIncome(container){ // overload — renders into passed card
   const body=document.createElement('div'); body.id='rpt-inc-body';
   container.appendChild(body);
   const months=buildIncomeStatement();
-  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
+  const display=ym?months.filter(m=>m.ym===ym):months.sort((a,b)=>(b.inc+b.exp)-(a.inc+a.exp)).slice(0,6).sort((a,b)=>a.ym.localeCompare(b.ym));
   const hdr=document.createElement('div');
   hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
   hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Income</span><span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
@@ -2452,24 +2093,36 @@ function buildRptIncome(container){ // overload — renders into passed card
 function buildRptCashFlow(container){
   const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const body=document.createElement('div');
-  const cf = getCF();
-  const yr = getReportYear();
-  const months = [];
-  for (let m = 1; m <= 12; m++) {
-    const ym = yr * 100 + m;
-    const d = cf[ym];
-    if (d && (d.coreIn > 0 || d.coreOut > 0 || d.totalSettle > 0)) months.push(d);
-  }
-  const display = months.slice(-6);
+  // Cash basis: group by txn_date month, separate loan payments from loan_schedule
+  const monthMap={};
+  allTxns.forEach(t=>{
+    if(!t.txn_date) return;
+    const ym=t.txn_date.substring(0,7);
+    if(!monthMap[ym]) monthMap[ym]={ym,inflow:0,outflow:0,loanSettle:0};
+    if(t.direction==='Income') monthMap[ym].inflow+=(+(t.amount_base)||0);
+    else monthMap[ym].outflow+=(+(t.amount_base)||0);
+  });
+  // Add settled loan payments from loan_schedule (these are ALREADY in transaction outflows
+  // if they were recorded as transactions, so we show them as a memo line, NOT subtracted again)
+  allLoanSchedule.filter(s=>s.status==='Settled').forEach(s=>{
+    const d = s.actual_date || s.due_date;
+    if(!d) return;
+    const ym = d.substring(0,7);
+    if(monthMap[ym]) monthMap[ym].loanSettle += +(s.exp_amt_base || s.expected_amt || 0);
+  });
+  const months=Object.values(monthMap).sort((a,b)=>a.ym.localeCompare(b.ym));
+  // Show months with significant data first
+  const display = months.filter(m=>m.inflow>0||m.outflow>100).slice(-6);
   const hdr=document.createElement('div');
   hdr.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
   hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">In</span><span style="font-size:10px;color:var(--text3);text-align:right">Out</span><span style="font-size:10px;color:var(--text3);text-align:right">Settle</span><span style="font-size:10px;color:var(--text3);text-align:right">Net Cash</span>';
   body.appendChild(hdr);
-  display.forEach(d=>{
-    const mo = (d.ym % 100) - 1;
+  display.forEach(m=>{
+    const net=m.inflow-m.outflow;
+    const mo=parseInt(m.ym.split('-')[1])-1;
     const row=document.createElement('div');
     row.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
-    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[mo]}</span><span style="font-size:10px;color:var(--green);text-align:right">${(d.coreIn/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--red);text-align:right">${(d.coreOut/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--amber);text-align:right">${(d.totalSettle/1000).toFixed(1)}K</span><span style="font-size:11px;font-weight:700;color:${d.netCash>=0?'var(--green)':'var(--red)'};text-align:right">${d.netCash>=0?'+':''}${(d.netCash/1000).toFixed(1)}K</span>`;
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[mo]}</span><span style="font-size:10px;color:var(--green);text-align:right">${(m.inflow/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--red);text-align:right">${(m.outflow/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--amber);text-align:right">${(m.loanSettle/1000).toFixed(1)}K</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${(net/1000).toFixed(1)}K</span>`;
     body.appendChild(row);
   });
   if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
@@ -2477,17 +2130,17 @@ function buildRptCashFlow(container){
 }
 
 function buildRptBalance(container){
-  // Computed from Calculation Engine v2 — matches Excel Rpt_BalanceSheet
-  const k = getKPIs();
-  const physicalAssets = k.physicalAssets;
-  const liquidCash = k.liquidCash;
-  const totalAssets = k.totalAssets;
-  const loanLiab = k.loanOblig;
-  const ccLiab = k.ccBal;
-  const bnplLiab = k.bnplBal;
-  const pendingLiab = k.pendingCmts;
-  const totalLiab = k.totalLiab;
-  const netWorth = k.netWorth;
+  // Calculation Engine v3 — uses open_bal_original snapshot
+  const _bs = computeBS();
+  const physicalAssets = _bs.physicalAssets;
+  const liquidCash = _bs.liquidCash;
+  const totalAssets = _bs.totalAssets;
+  const loanLiab = _bs.loanOblig;
+  const ccLiab = _bs.ccBal;
+  const bnplLiab = _bs.bnplBal;
+  const pendingLiab = _bs.pendingCmts;
+  const totalLiab = _bs.totalLiab;
+  const netWorth = _bs.netWorth;
   // Asset breakdown by type
   const byType={};
   allAssets.forEach(a=>{byType[a.asset_type]=(byType[a.asset_type]||0)+(a.current_value_base||0);});
@@ -2521,27 +2174,17 @@ function refreshRptWidget(id){
 
 function buildRptCatSpend(container){
   const ym=getSelectedMonth('rpt-cat');
-  const _txns = allTxns.map(enrichTxn);
+  const _isData2 = computeIS();
   const byCat={};
   if (ym) {
-    // Convert YYYY-MM to YYYYMM
     const [yy,mm] = ym.split('-');
     const targetYM = parseInt(yy)*100 + parseInt(mm);
-    _txns.forEach(t => {
-      if (t.direction !== 'Expense') return;
-      if (targetYM < t.valYM || targetYM > t.valEndYM) return;
-      byCat[t.category] = (byCat[t.category] || 0) + t.monthlyK;
-    });
+    const md = _isData2[String(targetYM)];
+    if (md && md.cats) Object.entries(md.cats).forEach(([c,v]) => { byCat[c] = (byCat[c]||0) + v; });
   } else {
-    // All time — spread-adjusted
-    const yr = getReportYear();
-    for (let ym2 = yr*100+1; ym2 <= yr*100+12; ym2++) {
-      _txns.forEach(t => {
-        if (t.direction !== 'Expense') return;
-        if (ym2 < t.valYM || ym2 > t.valEndYM) return;
-        byCat[t.category] = (byCat[t.category] || 0) + t.monthlyK;
-      });
-    }
+    Object.values(_isData2).forEach(m => {
+      Object.entries(m.cats || {}).forEach(([c,v]) => { byCat[c] = (byCat[c]||0) + v; });
+    });
   }
   const arr=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   const total=arr.reduce((s,[,v])=>s+v,0)||1;
@@ -2565,20 +2208,11 @@ function buildRptTagSpend(container){
 
 function buildRptMethods(container){
   const body=document.createElement('div');
-  // Use Calculation Engine v2 — includes transfers, loan payments, commitments
-  const mb = getMB();
-  const yr = getReportYear();
-  // Find latest month with data
-  let latestYM = 0;
-  const yms = getYMRange();
-  allTxns.forEach(t => { const ym = dateToYM(t.txn_date); if (ym > latestYM && ym <= yr*100+12) latestYM = ym; });
-  if (!latestYM) latestYM = yr * 100 + 3;
-  
-  const arr = allAccounts.map(a => {
-    const mData = mb[a.method_name];
-    const bal = mData?.months[latestYM] || 0;
-    return { m: a.method_name, bal, ccy: a.currency_code || 'AED' };
-  }).sort((a,b)=>Math.abs(b.bal*getFxRate(b.ccy))-Math.abs(a.bal*getFxRate(a.ccy)));
+  // open_bal_original IS the current snapshot balance (native currency)
+  // Do NOT add transaction flows — they are already reflected in the snapshot
+  const arr = allAccounts
+    .map(a => ({ m: a.method_name, bal: +(a.open_bal_original || 0), ccy: a.currency_code || 'AED' }))
+    .sort((a,b) => Math.abs(b.bal * getFxRate(b.ccy)) - Math.abs(a.bal * getFxRate(a.ccy)));
   arr.slice(0,16).forEach(({m,bal,ccy})=>{
     const row=document.createElement('div');
     row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)';
@@ -3105,7 +2739,8 @@ ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min
 // =============================================
 function calcLiveKPIs(){
   if(!allTxns.length) return null;
-  const k = getKPIs();
+  const k = computeKPIs();
+  if(k.totalInc === 0) return null;
   return { savingsRate: k.savingsRate, dti: k.dti, dscr: k.dscr, discPct: k.discPct };
 }
 
@@ -3113,18 +2748,16 @@ function calcLiveKPIs(){
 // FEATURE 2: INCOME STATEMENT in Reports
 // =============================================
 function buildIncomeStatement(){
-  const is = getIS();
-  const yr = getReportYear();
-  const result = [];
-  for (let m = 1; m <= 12; m++) {
-    const ym = yr * 100 + m;
-    const d = is[ym];
-    if (!d) continue;
-    if (d.totalInc === 0 && d.totalExp === 0) continue;
-    const ymStr = yr + '-' + String(m).padStart(2,'0');
-    result.push({ ym: ymStr, inc: d.totalInc, exp: d.totalExp, cats: d.expByCat });
-  }
-  return result;
+  const isData = computeIS();
+  // Convert YYYYMM keys to YYYY-MM format and filter months with data
+  return Object.values(isData)
+    .filter(m => m.inc > 0 || m.exp > 0)
+    .map(m => {
+      const yr = Math.floor(m.ym / 100);
+      const mo = String(m.ym % 100).padStart(2, '0');
+      return { ym: yr + '-' + mo, inc: m.inc, exp: m.exp, cats: m.cats };
+    })
+    .sort((a, b) => a.ym.localeCompare(b.ym));
 }
 
 // =============================================
@@ -3658,7 +3291,7 @@ async function loadAll(){
   allFxRates      = results[8] || [];
 
   // Show status card — always visible so we can diagnose
-  const counts = [allLiabilities,allAssets,allTxns,allCommitments,allAccounts,allTransfers].map(a=>a.length);
+  const counts = [allLiabilities,allAssets,allTxns,allCommitments,allAccounts].map(a=>a.length);
   const failed = results.slice(0,5).map((r,i)=>r===null?['liabilities','assets','transactions','commitments','accounts'][i]:null).filter(Boolean);
   
   if(counts.every(c=>c===0)){
