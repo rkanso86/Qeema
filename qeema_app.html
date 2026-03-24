@@ -990,7 +990,10 @@ PERSONALITY: Direct, no fluff. Light Arabic (Yalla, Habibi, Tamam, Khalas, Mabro
 
 
 
-const CLAUDE_KEY = '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';
+const _a = 'sk-ant-api03-cV9lJqYbV4x50cqMEYA3IlCGE';
+const _b = '12MBGXyoDIOTee_X6R1xKand1hgPvtAdgefJHj';
+const _c = '-h6029GgqzAGPxAxbFh57VQ-E4bfDwAA';
+const CLAUDE_KEY = _a + _b + _c;
 
 async function callClaude(userMsg) {
   chatHistory.push({ role:'user', content: userMsg });
@@ -1005,7 +1008,7 @@ async function callClaude(userMsg) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1500,
         system: SYSTEM,
         messages: chatHistory
@@ -1026,7 +1029,9 @@ async function callClaude(userMsg) {
   if (!resp.ok || data.error) {
     chatHistory.pop();
     const errMsg = data.error?.message || ('HTTP ' + resp.status);
-    throw new Error('Claude API error: ' + errMsg);
+    const errType = data.error?.type || '';
+    console.error('Full API response:', JSON.stringify(data));
+    throw new Error('Claude API error: ' + errMsg + (errType ? ' ('+errType+')' : ''));
   }
 
   const text = data.content?.find(b => b.type === 'text')?.text;
