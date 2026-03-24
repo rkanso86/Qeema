@@ -793,6 +793,7 @@ async function sbDelete(table,filter){
 // FORMATTERS
 // ==============================================
 const fmt=n=>Math.abs(n)>=1000?(n/1000).toFixed(2)+'K':Number(n).toFixed(2);
+const APP_FX={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98,LBP:0.000041,CHF:4.15,AUD:2.40,EGP:0.07,INR:0.04};
 const fmtFull=n=>{
   const ccy=localStorage.getItem('qeema_currency')||'AED';
   const rate=APP_FX[ccy]||1;
@@ -1628,10 +1629,7 @@ function renderDashboard(){
   const el=document.getElementById('dash-widgets');
   el.innerHTML='';
 
-  // ── Live FX rates from loaded data (fall back to constants) ──
-  const APP_FX={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98,LBP:0.000041,CHF:4.15,AUD:2.40,EGP:0.07,INR:0.04};
-const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
-  // (fx_rates table loaded on demand — use constants as they match DB)
+  // ── FX constants defined globally above ──
 
   // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
   // Account balances stored in open_bal_base = exact Mar 2026 values from Excel
@@ -3167,19 +3165,43 @@ async function loadAll(){
   allAccounts    = results[4] || [];
   allAssumptions = results[5] || [];
 
+  // Show status card — always visible so we can diagnose
+  const counts = [allLiabilities,allAssets,allTxns,allCommitments,allAccounts].map(a=>a.length);
+  const failed = results.slice(0,5).map((r,i)=>r===null?['liabilities','assets','transactions','commitments','accounts'][i]:null).filter(Boolean);
+  
+  if(counts.every(c=>c===0)){
+    // All tables empty or failed — show diagnostic
+    document.getElementById('dash-widgets').innerHTML=`
+      <div class="card" style="padding:20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:10px">📡</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">No data loaded</div>
+        <div style="font-size:11px;color:var(--text3);background:var(--card2);padding:10px;border-radius:8px;margin-bottom:12px;text-align:left">
+          ${failed.length?'Failed: '+failed.join(', '):'All fetches returned empty arrays'}<br>
+          Results: ${results.slice(0,5).map((r,i)=>(['lib','ast','txn','cmt','acc'][i]+':'+(r===null?'ERR':r.length))).join(' ')}<br>
+          URL: ${SB_URL.slice(8,40)}…
+        </div>
+        <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:10px 24px;font-family:var(--font);font-size:13px;font-weight:700;color:#1a2030;cursor:pointer">↺ Retry</button>
+      </div>`;
+    return;
+  }
+
   if(allFailed){
     document.getElementById('dash-widgets').innerHTML=`
       <div class="card" style="text-align:center;padding:28px 20px">
         <div style="font-size:32px;margin-bottom:14px">📡</div>
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">Cannot reach database</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Check your internet connection and try again.</div>
         <div style="font-size:11px;color:var(--text3);background:var(--card2);border-radius:8px;padding:8px;margin-bottom:16px;word-break:break-all">${SB_URL}</div>
         <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:11px 28px;font-family:var(--font);font-size:14px;font-weight:700;color:#1a2030;cursor:pointer">↺ Retry</button>
       </div>`;
     return;
   }
 
-  renderDashboard();
+  try{
+    renderDashboard();
+  }catch(e){
+    console.error('renderDashboard crashed:',e);
+    document.getElementById('dash-widgets').innerHTML=`<div class="card" style="padding:16px;color:var(--red);font-size:12px">Dashboard error: ${e.message}<br><small style="color:var(--text3)">${e.stack?.split('\n')[1]||''}</small></div>`;
+  }
   applyTxnFilters();
   buildMonthTabs();
   updateCounts();
