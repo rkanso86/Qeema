@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema v3.6</title>
+<title>Qeema v3.7</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.6</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.7</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -590,21 +590,21 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="u-header-title" style="flex:1">Transactions</div>
     <button class="mgmt-add" onclick="openDetail('transaction',null)" style="background:var(--grad);border:none;width:32px;height:32px;border-radius:9px;font-size:18px;color:#1a2030;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">+</button>
   </div>
+  <!-- Actual / Upcoming tabs -->
+  <div style="display:flex;gap:6px;padding:0 16px 10px;flex-shrink:0">
+    <div class="fchip active" id="txn-main-actual" onclick="setTxnMainTab('actual',this)" style="flex:1;text-align:center;padding:9px">Actual</div>
+    <div class="fchip" id="txn-main-upcoming" onclick="setTxnMainTab('upcoming',this)" style="flex:1;text-align:center;padding:9px">Upcoming</div>
+  </div>
+  <!-- ACTUAL transactions panel -->
+  <div id="txn-panel-actual">
   <div class="search-wrap"><div class="search-bar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg><input type="text" placeholder="Search transactions…" id="txn-search" oninput="applyTxnFilters()"><span class="search-clear" id="txn-search-clear" style="display:none" onclick="clearSearch()">×</span></div></div>
   <div class="filter-bar">
     <div class="filter-btn" id="txn-filter-btn" onclick="openFP('txn')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg> Filter <span id="txn-fc" style="display:none;background:var(--teal);color:#1a2030;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span></div>
     <div class="sort-btn active" id="sort-date" onclick="setTxnSort('date')">↓ Date</div>
     <div class="sort-btn" id="sort-amount" onclick="setTxnSort('amount')">↓ Amount</div>
   </div>
-  <!-- Month quick-filter row -->
   <div style="display:flex;gap:6px;overflow-x:auto;padding:0 16px 8px;flex-shrink:0" id="month-tabs">
     <div class="fchip active" id="mtab-all" onclick="setMonthFilter('')">All</div>
-    <div class="fchip" id="mtab-2026-01" onclick="setMonthFilter('2026-01')">Jan</div>
-    <div class="fchip" id="mtab-2026-02" onclick="setMonthFilter('2026-02')">Feb</div>
-    <div class="fchip" id="mtab-2026-03" onclick="setMonthFilter('2026-03')">Mar</div>
-    <div class="fchip" id="mtab-2026-04" onclick="setMonthFilter('2026-04')">Apr</div>
-    <div class="fchip" id="mtab-2026-05" onclick="setMonthFilter('2026-05')">May</div>
-    <div class="fchip" id="mtab-2026-06" onclick="setMonthFilter('2026-06')">Jun</div>
   </div>
   <div class="active-filters" id="txn-af" style="display:none"></div>
   <div class="txn-count" id="txn-count-lbl"></div>
@@ -614,6 +614,22 @@ body{display:flex;justify-content:center;align-items:center}
       <div class="metric"><div class="m-lbl">Total In</div><div class="m-val" style="font-size:16px;color:var(--green)" id="txn-in">–</div><div class="m-sub">AED</div></div>
       <div class="metric"><div class="m-lbl">Total Out</div><div class="m-val" style="font-size:16px;color:var(--red)" id="txn-out">–</div><div class="m-sub">AED</div></div>
     </div>
+  </div>
+  </div>
+  <!-- UPCOMING commitments panel -->
+  <div id="txn-panel-upcoming" style="display:none;flex:1;overflow:hidden;display:none;flex-direction:column">
+    <div style="display:flex;gap:6px;padding:0 16px 8px;flex-shrink:0;overflow-x:auto">
+      <div class="fchip active" id="cmt-tab-all" onclick="setCmtTab('all',this)">All</div>
+      <div class="fchip" id="cmt-tab-10d" onclick="setCmtTab('10d',this)">Due in 10 days</div>
+      <div class="fchip" id="cmt-tab-pending" onclick="setCmtTab('pending',this)">Pending</div>
+      <div class="fchip" id="cmt-tab-settled" onclick="setCmtTab('settled',this)">Settled</div>
+    </div>
+    <div style="display:flex;gap:6px;padding:0 16px 8px;flex-shrink:0">
+      <div class="sort-btn active" id="cmt-sd" onclick="setCmtSort('date')">↓ Date</div>
+      <div class="sort-btn" id="cmt-sa" onclick="setCmtSort('amount')">↓ Amount</div>
+      <button class="mgmt-add" onclick="openDetail('commitment',null)" style="margin-left:auto;background:var(--grad);border:none;width:28px;height:28px;border-radius:8px;font-size:16px;color:#1a2030;cursor:pointer">+</button>
+    </div>
+    <div class="scroll" style="padding-top:0"><div id="mgmt-cmt-list"></div></div>
   </div>
   <div class="filter-overlay" id="txn-filter-overlay" onclick="closeFP('txn')"></div>
   <div class="filter-panel" id="txn-fp">
@@ -729,8 +745,14 @@ function loadWidgetConfig() {
 function saveWidgetConfig(cfg) { localStorage.setItem('qeema_widgets', JSON.stringify(cfg)); }
 function getWidgetConfig() {
   const saved = loadWidgetConfig();
-  if (saved) return saved;
-  return WIDGET_DEFS.map((w,i) => ({ ...w, visible:w['default'], order:i }));
+  // Always merge with WIDGET_DEFS so new widgets added to code appear
+  const base = WIDGET_DEFS.map((w,i) => ({ ...w, visible:w['default'], order:i }));
+  if (!saved || !saved.length) return base;
+  // Merge: keep saved preferences, add any new widgets from WIDGET_DEFS
+  return base.map(def => {
+    const s = saved.find(x=>x.id===def.id);
+    return s ? { ...def, visible:s.visible, order:s.order } : def;
+  }).sort((a,b)=>a.order-b.order);
 }
 
 // Verified baseline from Qeema v65
@@ -1525,7 +1547,28 @@ function renderTxnList(txns){
     </div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions found</div>';
 }
 function openTxnDetail(i){openDetail('transaction',currentTxnList[i]);}
-function renderTransactions(){applyTxnFilters();}
+let txnMainTab='actual';
+function setTxnMainTab(tab, el){
+  txnMainTab=tab;
+  document.querySelectorAll('[id^="txn-main-"]').forEach(e=>e.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const actualPanel=document.getElementById('txn-panel-actual');
+  const upcomingPanel=document.getElementById('txn-panel-upcoming');
+  if(actualPanel) actualPanel.style.display=tab==='actual'?'flex':'none'; actualPanel && (actualPanel.style.flexDirection='column');
+  if(upcomingPanel) upcomingPanel.style.display=tab==='upcoming'?'flex':'none'; upcomingPanel && (upcomingPanel.style.flexDirection='column');
+  if(tab==='actual') applyTxnFilters();
+  else renderFilteredCmts('');
+}
+function renderTransactions(){
+  applyTxnFilters();
+  // Show actual panel by default
+  const actualPanel=document.getElementById('txn-panel-actual');
+  const upcomingPanel=document.getElementById('txn-panel-upcoming');
+  if(actualPanel) actualPanel.style.display='flex'; actualPanel && (actualPanel.style.flexDirection='column');
+  if(upcomingPanel) upcomingPanel.style.display='none';
+  document.getElementById('txn-main-actual')?.classList.add('active');
+  document.getElementById('txn-main-upcoming')?.classList.remove('active');
+}
 
 // ==============================================
 // DASHBOARD
@@ -1534,8 +1577,16 @@ function toggleDashEdit(){
   dashEditMode=!dashEditMode;
   document.getElementById('edit-dash-btn').textContent=dashEditMode?'Done':'Edit';
   document.getElementById('dash-scroll').classList.toggle('dash-edit-mode',dashEditMode);
-  if(dashEditMode) renderDashEditMode();
-  else{saveWidgetConfig(getWidgetConfig());renderDashboard();}
+  if(dashEditMode){
+    renderDashEditMode();
+  } else {
+    // Save current edit state and force re-render
+    const cfg=getWidgetConfig();
+    saveWidgetConfig(cfg);
+    localStorage.removeItem('qeema_widgets_draft'); // clear any draft
+    dashEditMode=false;
+    renderDashboard();
+  }
 }
 
 function renderDashEditMode(){
@@ -1585,17 +1636,25 @@ const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
   // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
   // Account balances stored in open_bal_base = exact Mar 2026 values from Excel
   // Do NOT recalculate from transactions (transfers not in txn table would cause mismatch)
-  // ── Use stored Excel balance sheet values (assumptions table) for exact match ──
-  const getAsm=(k,d)=>{const a=allAssumptions.find(x=>x.parameter===k);return a?Number(a.value_num||d):d;};
-  const liquidCash    = getAsm('LiquidCashAED',   11132.80);
-  const physicalAssets= allAssets.reduce((s,a)=>s+(a.current_value_base||0),0) || getAsm('TotalAssetsAED',1618619.80)-liquidCash;
-  const totalAssets   = physicalAssets + liquidCash;
-  const loanLiab      = allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0) || getAsm('LoanObligAED',2195907.27);
-  const ccLiab        = allAccounts.filter(a=>a.account_type==='CreditCard'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0) || getAsm('CCBalancesAED',52057.80);
-  const bnplLiab      = allAccounts.filter(a=>a.account_type==='BNPL'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0) || getAsm('BNPLBalancesAED',18506.30);
-  const pendingLiab   = allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0) || getAsm('PendingCmtsAED',151816.54);
-  const totalLiab     = loanLiab+ccLiab+bnplLiab+pendingLiab;
-  const netWorth      = totalAssets-totalLiab;
+  // ── Live calculation from DB (no hardcoding) ──
+  // open_bal_base stores exact Mar 2026 balances (run fix_account_balances_mar2026.sql)
+  const physicalAssets = allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
+  const liquidCash = allAccounts
+    .filter(a=>['Bank','Cash','Savings'].includes(a.account_type))
+    .reduce((s,a)=>s+(a.open_bal_base||0),0);
+  const totalAssets = physicalAssets + liquidCash;
+  const loanLiab = allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
+  const ccLiab = allAccounts
+    .filter(a=>a.account_type==='CreditCard' && (a.open_bal_base||0)<0)
+    .reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
+  const bnplLiab = allAccounts
+    .filter(a=>a.account_type==='BNPL' && (a.open_bal_base||0)<0)
+    .reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
+  const pendingLiab = allCommitments
+    .filter(c=>c.status==='Pending'&&c.direction==='Expense')
+    .reduce((s,c)=>s+(c.amount_base||0),0);
+  const totalLiab = loanLiab+ccLiab+bnplLiab+pendingLiab;
+  const netWorth = totalAssets-totalLiab;
   const freeCashAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
 
   cfg.forEach(w=>{
@@ -1930,28 +1989,33 @@ function buildRptCashFlow(container){
 }
 
 function buildRptBalance(container){
-  const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const fx={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
-  const toBase=(v,ccy)=>v*(fx[ccy]||1);
-  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
+  // Same calculation as dashboard — reads live from DB
+  const physicalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
+  const liquidCash=allAccounts.filter(a=>['Bank','Cash','Savings'].includes(a.account_type)).reduce((s,a)=>s+(a.open_bal_base||0),0);
+  const totalAssets=physicalAssets+liquidCash;
+  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
+  const ccLiab=allAccounts.filter(a=>a.account_type==='CreditCard'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
+  const bnplLiab=allAccounts.filter(a=>a.account_type==='BNPL'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
+  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+  const totalLiab=loanLiab+ccLiab+bnplLiab+pendingLiab;
   const netWorth=totalAssets-totalLiab;
-  // Assets breakdown
+  // Asset breakdown by type
   const byType={};
   allAssets.forEach(a=>{byType[a.asset_type]=(byType[a.asset_type]||0)+(a.current_value_base||0);});
-  const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa'];
+  if(liquidCash>0) byType['Liquid Cash']=(byType['Liquid Cash']||0)+liquidCash;
   const assetTypes=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
   let html=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Assets</div>`;
-  assetTypes.forEach(([type,val],i)=>{
+  assetTypes.forEach(([type,val])=>{
     html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${type}</span><span style="font-weight:600;color:var(--text)">${fmtFull(val)}</span></div>`;
   });
   html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Assets</span><span style="font-size:13px;font-weight:700;color:var(--green)">${fmtFull(totalAssets)}</span></div>`;
   html+=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Liabilities</div>`;
-  allLiabilities.forEach(l=>{
-    const rem=l.remaining_principal||0;
-    html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${l.liability_name}</span><span style="font-weight:600;color:var(--text)">${fmtFull(rem)} <span style="color:var(--text3);font-size:10px">(${l.loan_currency})</span></span></div>`;
-  });
+  allLiabilities.forEach(l=>{html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${l.liability_name}</span><span style="font-weight:600;color:var(--text)">${fmtFull(l.remaining_principal||0)} <span style="color:var(--text3);font-size:10px">${l.loan_currency}</span></span></div>`;});
+  if(ccLiab>0) html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">Credit Cards</span><span style="font-weight:600;color:var(--text)">${fmtFull(ccLiab)}</span></div>`;
+  if(bnplLiab>0) html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">BNPL</span><span style="font-weight:600;color:var(--text)">${fmtFull(bnplLiab)}</span></div>`;
+  if(pendingLiab>0) html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">Pending Commitments</span><span style="font-weight:600;color:var(--text)">${fmtFull(pendingLiab)}</span></div>`;
   html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Liabilities</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(totalLiab)}</span></div>`;
-  html+=`<div style="display:flex;justify-content:space-between;padding:10px 0 0"><span style="font-size:13px;font-weight:700;color:var(--text)">Net Worth</span><span style="font-size:15px;font-weight:800;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</span></div>`;
+  html+=`<div style="display:flex;justify-content:space-between;padding:10px 0 0"><span style="font-size:13px;font-weight:700;color:var(--text)">Net Worth</span><span style="font-size:15px;font-weight:800;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}${fmtFull(Math.abs(netWorth))}</span></div>`;
   const div=document.createElement('div');div.innerHTML=html;container.appendChild(div);
 }
 
@@ -2100,7 +2164,7 @@ function saveProfSetting(key,val){
   localStorage.setItem('qeema_'+key,val);
   renderProfile();
   if(key==='name'){const sub=document.getElementById('drawer-sub');if(sub)sub.textContent='Your Personal CFO · '+val;}
-  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.6';}
+  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.7';}
 }
 function toggleTheme(isLight){
   localStorage.setItem('qeema_theme',isLight?'light':'dark');
@@ -3094,13 +3158,14 @@ async function loadAll(){
   ]);
 
   const anyFailed = results.slice(0,5).some(r => r === null);
-  const allFailed = results.every(r => r === null);
+  const allFailed = results.slice(0,5).every(r => r === null);
 
   allLiabilities = results[0] || [];
   allAssets      = results[1] || [];
   allTxns        = results[2] || [];
   allCommitments = results[3] || [];
   allAccounts    = results[4] || [];
+  allAssumptions = results[5] || [];
 
   if(allFailed){
     document.getElementById('dash-widgets').innerHTML=`
