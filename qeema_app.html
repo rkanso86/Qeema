@@ -1961,27 +1961,35 @@ ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min
 // LOAD & INIT
 // ══════════════════════════════════════════════
 async function loadAll(){
+  // Show app immediately — don't wait for data
+  const theme=localStorage.getItem('qeema_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  const h=new Date().getHours();
+  const name=localStorage.getItem('qeema_name')||'Rabie';
+  const greeting=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('dash-greeting').textContent=greeting+', '+name;
+  document.getElementById('loading').style.display='none';
+  renderDashboard();
+
+  // Load data in background — prioritise transactions first
   try{
-    [allTxns,allCommitments,allLiabilities,allAssets]=await Promise.all([
+    // Load critical data first (fast queries)
+    [allLiabilities,allAssets]=await Promise.all([
+      sbGet('liabilities','status=eq.Active'),
+      sbGet('assets','select=asset_id,asset_name,asset_type,current_value_base,current_value_ccy,location'),
+    ]);
+    renderDashboard();
+
+    // Then load larger datasets
+    [allTxns,allCommitments]=await Promise.all([
       sbGet('transactions','order=txn_date.desc&limit=300'),
       sbGet('commitments','order=expected_date.asc'),
-      sbGet('liabilities','status=eq.Active'),
-      sbGet('assets','select=*'),
     ]);
-    // Apply saved theme
-    const theme=localStorage.getItem('qeema_theme')||'dark';
-    document.documentElement.setAttribute('data-theme',theme);
-    // Greeting
-    const h=new Date().getHours();
-    const name=localStorage.getItem('qeema_name')||'Rabie';
-    const greeting=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-    document.getElementById('dash-greeting').textContent=greeting+', '+name;
     renderDashboard();
     applyTxnFilters();
     updateCounts();
-    document.getElementById('loading').style.display='none';
   }catch(e){
-    document.getElementById('loading').innerHTML=`<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">Connection error.<br>Check your network.</div>`;
+    showToast('⚠ Connection issue — some data may not load',true);
   }
 }
 loadAll();
