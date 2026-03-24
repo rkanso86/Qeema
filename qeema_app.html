@@ -873,50 +873,74 @@ function computeIS() {
 function computeKPIs() {
   const txns = allTxns.map(enrichTxn);
   
-  // Sum on VALUE-RECOGNITION basis across report year (Jan-Dec 2026)
-  // For each month, each transaction contributes monthlyK if that month falls in its spread window
-  // This matches Excel Hlpr_Aggregation rows 12-17
-  const reportYear = 2026;
-  let coreInc = 0, nonCoreInc = 0, coreExp = 0, nonCoreExp = 0;
-  let monthsWithIncome = 0;
+  // Excel Rolling 12M window: from max(1, asOfMonth-11) to asOfMonth
+  // AsOfDate from assumptions, or use current date
+  const asOfParam = allAssumptions.find(a => a.parameter === 'AsOfDate');
+  const asOfDate = asOfParam?.value_date ? new Date(asOfParam.value_date) : new Date();
+  const asOfYM = asOfDate.getFullYear() * 100 + (asOfDate.getMonth() + 1);
+  const reportYear = asOfDate.getFullYear();
+  const asOfMonth = asOfDate.getMonth() + 1; // 1-12
+  const windowStart = Math.max(1, asOfMonth - 11);
   
-  for (let m = 1; m <= 12; m++) {
+  // VALUE-RECOGNITION basis over the window (Jan to AsOfMonth)
+  let coreInc = 0, coreExp = 0, nonCoreExp = 0, totalExp = 0;
+  
+  for (let m = windowStart; m <= asOfMonth; m++) {
     const ym = reportYear * 100 + m;
-    let mInc = 0, mExp = 0;
     txns.forEach(t => {
       if (ym < t.valYM || ym > t.valEndYM) return;
       if (t.direction === 'Income') {
-        mInc += t.monthlyK;
         if ((t.core_flag||'').toLowerCase() !== 'non-core') coreInc += t.monthlyK;
-        else nonCoreInc += t.monthlyK;
       } else {
-        mExp += t.monthlyK;
-        if ((t.core_flag||'').toLowerCase() !== 'non-core') coreExp += t.monthlyK;
+        const isNonCore = (t.core_flag||'').toLowerCase() === 'non-core';
+        if (!isNonCore) coreExp += t.monthlyK;
         else nonCoreExp += t.monthlyK;
+        totalExp += t.monthlyK;
       }
     });
-    if (mInc > 0) monthsWithIncome++;
   }
-
-  const totalInc = coreInc + nonCoreInc;
-  const totalExp = coreExp + nonCoreExp;
   
-  // Savings Rate = (Core Income - Core Expense) / Core Income (matches Excel)
+  const totalInc = coreInc; // For savings rate, use core income only
+  
+  // Savings Rate = SUM(CoreInc - CoreExp) / SUM(CoreInc) over window
   const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
   
-  // DTI = Annual Loan Payments / Annual Income
+  // DTI = avg monthly (loan+BNPL payments) / avg monthly income
+  // Excel uses Rpt_FreeCash committed values; we approximate with loan_schedule settlements
   const loanPmtMonthly = allLiabilities.reduce((s, l) => s + +(l.monthly_payment || 0), 0);
-  const loanPmtAnnual = loanPmtMonthly * 12;
-  const dti = totalInc > 0 ? loanPmtAnnual / totalInc : 0;
+  const windowMonths = asOfMonth - windowStart + 1;
+  const avgMonthlyIncome = coreInc / windowMonths;
+  const dti = avgMonthlyIncome > 0 ? loanPmtMonthly / avgMonthlyIncome : 0;
   
-  // DSCR = Average Monthly Income / Monthly Loan Payment
-  const avgMonthlyInc = monthsWithIncome > 0 ? totalInc / monthsWithIncome : 0;
-  const dscr = loanPmtMonthly > 0 ? avgMonthlyInc / loanPmtMonthly : 99;
+  // DSCR = SUM(Core Cash Inflows) / SUM(Loan Settlements) over window
+  // Cash basis: use TxnYM, not value-recognition
+  let cashInflows = 0;
+  txns.forEach(t => {
+    const ym = t.txnYM;
+    if (ym < reportYear * 100 + windowStart || ym > asOfYM) return;
+    if (t.direction === 'Income') cashInflows += t.amtBase;
+  });
+  let loanSettlements = 0;
+  allLoanSchedule.filter(s => s.status === 'Settled').forEach(s => {
+    const sYM = dateToYM(s.actual_date || s.due_date);
+    if (sYM >= reportYear * 100 + windowStart && sYM <= asOfYM) {
+      loanSettlements += +(s.exp_amt_base || s.expected_amt || 0);
+    }
+  });
+  const dscr = loanSettlements > 0 ? cashInflows / loanSettlements : 99;
   
-  // Discretionary % = Non-Core Expense / Total Expense  
-  const discPct = totalExp > 0 ? nonCoreExp / totalExp : 0;
+  // Discretionary % = Non-Core Expense / Total Expense (cash basis over window)
+  let cashExpTotal = 0, cashExpNonCore = 0;
+  txns.forEach(t => {
+    if (t.direction !== 'Expense') return;
+    const ym = t.txnYM;
+    if (ym < reportYear * 100 + windowStart || ym > asOfYM) return;
+    cashExpTotal += t.amtBase;
+    if ((t.core_flag||'').toLowerCase() === 'non-core') cashExpNonCore += t.amtBase;
+  });
+  const discPct = cashExpTotal > 0 ? cashExpNonCore / cashExpTotal : 0;
 
-  return { savingsRate, dti, dscr, discPct, totalInc, totalExp };
+  return { savingsRate, dti, dscr, discPct, totalInc, totalExp: coreExp + nonCoreExp };
 }
 
 
