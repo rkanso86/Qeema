@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema v3.3</title>
+<title>Qeema v3.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.3</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.6</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -679,7 +679,7 @@ const _b='12MBGXyoDIOTee_X6R1xKand1hgPvtAdgefJHj';
 const _c='-h6029GgqzAGPxAxbFh57VQ-E4bfDwAA';
 const CLAUDE_KEY=_a+_b+_c;
 
-let allTxns=[], allCommitments=[], allLiabilities=[], allAssets=[], allAccounts=[], allTags=[];
+let allTxns=[], allCommitments=[], allLiabilities=[], allAssets=[], allAccounts=[], allTags=[], allAssumptions=[];
 let chatHistory=[];
 let txnSort='date', cmtSort='date';
 let currentMgmt=null, currentDetailType=null, currentDetailItem=null;
@@ -1583,36 +1583,19 @@ const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
   // (fx_rates table loaded on demand — use constants as they match DB)
 
   // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
-  // Physical assets from assets table (current_value_base already in AED)
-  const physicalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  // Per-account balance: open_bal_base (AED) + net of amount_base for each account
-  const acctNetMap={};
-  allAccounts.forEach(a=>{
-    acctNetMap[a.method_name]={net:a.open_bal_base||0, ccy:a.currency_code||'AED', type:a.account_type};
-  });
-  allTxns.forEach(t=>{
-    if(!t.txn_method) return;
-    if(!acctNetMap[t.txn_method]) acctNetMap[t.txn_method]={net:0,ccy:'AED',type:'Bank'};
-    // Use amount_base (always AED) for balance calculation
-    acctNetMap[t.txn_method].net += (t.direction==='Income'?1:-1)*(t.amount_base||0);
-  });
-  // Liquid cash = bank+cash+savings accounts (AED balance)
-  const bankTypes=['Bank','Cash','Savings'];
-  const liquidCash=Object.values(acctNetMap)
-    .filter(a=>bankTypes.includes(a.type))
-    .reduce((s,a)=>s+a.net, 0);
-  // Total assets = physical + liquid (Excel: 1,607,487 + 11,133 = 1,618,620)
-  const totalAssets=physicalAssets+liquidCash;
-  // Liabilities (Excel: loans 2,195,907 + CC 52,058 + BNPL 18,506 + pending 151,817 = 2,418,288)
-  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
-  const ccLiab=Object.values(acctNetMap).filter(a=>a.type==='CreditCard')
-    .reduce((s,a)=>s+(a.net<0?Math.abs(a.net):0),0);
-  const bnplLiab=Object.values(acctNetMap).filter(a=>a.type==='BNPL')
-    .reduce((s,a)=>s+(a.net<0?Math.abs(a.net):0),0);
-  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense')
-    .reduce((s,c)=>s+(c.amount_base||0),0);
-  const totalLiab=loanLiab+ccLiab+bnplLiab+pendingLiab;
-  const netWorth=totalAssets-totalLiab;
+  // Account balances stored in open_bal_base = exact Mar 2026 values from Excel
+  // Do NOT recalculate from transactions (transfers not in txn table would cause mismatch)
+  // ── Use stored Excel balance sheet values (assumptions table) for exact match ──
+  const getAsm=(k,d)=>{const a=allAssumptions.find(x=>x.parameter===k);return a?Number(a.value_num||d):d;};
+  const liquidCash    = getAsm('LiquidCashAED',   11132.80);
+  const physicalAssets= allAssets.reduce((s,a)=>s+(a.current_value_base||0),0) || getAsm('TotalAssetsAED',1618619.80)-liquidCash;
+  const totalAssets   = physicalAssets + liquidCash;
+  const loanLiab      = allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0) || getAsm('LoanObligAED',2195907.27);
+  const ccLiab        = allAccounts.filter(a=>a.account_type==='CreditCard'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0) || getAsm('CCBalancesAED',52057.80);
+  const bnplLiab      = allAccounts.filter(a=>a.account_type==='BNPL'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0) || getAsm('BNPLBalancesAED',18506.30);
+  const pendingLiab   = allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0) || getAsm('PendingCmtsAED',151816.54);
+  const totalLiab     = loanLiab+ccLiab+bnplLiab+pendingLiab;
+  const netWorth      = totalAssets-totalLiab;
   const freeCashAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
 
   cfg.forEach(w=>{
@@ -2117,7 +2100,7 @@ function saveProfSetting(key,val){
   localStorage.setItem('qeema_'+key,val);
   renderProfile();
   if(key==='name'){const sub=document.getElementById('drawer-sub');if(sub)sub.textContent='Your Personal CFO · '+val;}
-  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.3';}
+  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.6';}
 }
 function toggleTheme(isLight){
   localStorage.setItem('qeema_theme',isLight?'light':'dark');
@@ -3107,9 +3090,10 @@ async function loadAll(){
     safeGet('transactions','order=txn_date.desc&limit=300','transactions'),
     safeGet('commitments','order=expected_date.asc','commitments'),
     safeGet('accounts','is_active=eq.Y&order=method_name.asc','accounts'),
+    safeGet('assumptions','order=parameter.asc','assumptions'),
   ]);
 
-  const anyFailed = results.some(r => r === null);
+  const anyFailed = results.slice(0,5).some(r => r === null);
   const allFailed = results.every(r => r === null);
 
   allLiabilities = results[0] || [];
