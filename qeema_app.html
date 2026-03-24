@@ -3066,13 +3066,13 @@ async function loadAll(){
 
   if(errors.length){
     console.error('Load errors:', errors);
-    // Show visible error in dashboard
     const el=document.getElementById('dash-widgets');
     if(el && allTxns.length===0 && allAssets.length===0){
       el.innerHTML=`<div class="card" style="text-align:center;padding:24px">
         <div style="font-size:24px;margin-bottom:12px">⚠️</div>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">Could not connect to database</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${errors[0]}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">Connection Error</div>
+        <div style="font-size:11px;color:var(--red);margin-bottom:8px;text-align:left;background:var(--card2);padding:10px;border-radius:8px;word-break:break-all">${errors.join('<br>')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">URL: ${SB_URL.slice(0,40)}…</div>
         <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:10px 24px;font-family:var(--font);font-size:13px;font-weight:700;color:#1a2030;cursor:pointer">Retry</button>
       </div>`;
     }
