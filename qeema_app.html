@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema v3.2</title>
+<title>Qeema v3.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.2</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.3</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -771,7 +771,13 @@ async function sbDelete(table,filter){
 // FORMATTERS
 // ==============================================
 const fmt=n=>Math.abs(n)>=1000?(n/1000).toFixed(2)+'K':Number(n).toFixed(2);
-const fmtFull=n=>Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtFull=n=>{
+  const ccy=localStorage.getItem('qeema_currency')||'AED';
+  const rate=APP_FX[ccy]||1;
+  const converted=Number(n)/rate;
+  return converted.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+};
+const fmtCcy=()=>localStorage.getItem('qeema_currency')||'AED';
 const fmtDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 
 const catIcons={
@@ -1572,41 +1578,42 @@ function renderDashboard(){
   el.innerHTML='';
 
   // ── Live FX rates from loaded data (fall back to constants) ──
-  const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
+  const APP_FX={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98,LBP:0.000041,CHF:4.15,AUD:2.40,EGP:0.07,INR:0.04};
+const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
   // (fx_rates table loaded on demand — use constants as they match DB)
 
-  // ── Net Worth matching Excel balance sheet exactly ──
-  // Assets = physical assets (current_value_base) + liquid cash
+  // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
+  // Physical assets from assets table (current_value_base already in AED)
   const physicalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  // Liquid cash = per-account: opening_bal_base + net of transactions FOR that account
-  const fxM={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
-  const acctBalMap={};
-  allAccounts.forEach(a=>{acctBalMap[a.method_name]={bal:a.open_bal_base||0,ccy:a.currency_code||'AED',type:a.account_type};});
-  allTxns.forEach(t=>{
-    if(!t.txn_method||!acctBalMap[t.txn_method]) return;
-    const delta=(t.direction==='Income'?1:-1)*(t.amount_original||t.amount_base||0);
-    acctBalMap[t.txn_method].bal+=delta;
+  // Per-account balance: open_bal_base (AED) + net of amount_base for each account
+  const acctNetMap={};
+  allAccounts.forEach(a=>{
+    acctNetMap[a.method_name]={net:a.open_bal_base||0, ccy:a.currency_code||'AED', type:a.account_type};
   });
-  // Liquid cash = sum of bank+cash accounts in AED
+  allTxns.forEach(t=>{
+    if(!t.txn_method) return;
+    if(!acctNetMap[t.txn_method]) acctNetMap[t.txn_method]={net:0,ccy:'AED',type:'Bank'};
+    // Use amount_base (always AED) for balance calculation
+    acctNetMap[t.txn_method].net += (t.direction==='Income'?1:-1)*(t.amount_base||0);
+  });
+  // Liquid cash = bank+cash+savings accounts (AED balance)
   const bankTypes=['Bank','Cash','Savings'];
-  const liquidCashCalc=Object.values(acctBalMap).filter(a=>bankTypes.includes(a.type))
-    .reduce((s,a)=>s+a.bal*(fxM[a.ccy]||1),0);
-  const totalAssets=physicalAssets+Math.max(0,liquidCashCalc);
-  // Liabilities = loans + CC balances + BNPL balances + pending commitments
-  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0); // all in AED now
-  const ccLiab=Object.values(acctBalMap).filter(a=>a.type==='CreditCard')
-    .reduce((s,a)=>{const b=a.bal*(fxM[a.ccy]||1);return s+(b<0?Math.abs(b):0);},0);
-  const bnplLiab=Object.values(acctBalMap).filter(a=>a.type==='BNPL')
-    .reduce((s,a)=>{const b=a.bal*(fxM[a.ccy]||1);return s+(b<0?Math.abs(b):0);},0);
-  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+  const liquidCash=Object.values(acctNetMap)
+    .filter(a=>bankTypes.includes(a.type))
+    .reduce((s,a)=>s+a.net, 0);
+  // Total assets = physical + liquid (Excel: 1,607,487 + 11,133 = 1,618,620)
+  const totalAssets=physicalAssets+liquidCash;
+  // Liabilities (Excel: loans 2,195,907 + CC 52,058 + BNPL 18,506 + pending 151,817 = 2,418,288)
+  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
+  const ccLiab=Object.values(acctNetMap).filter(a=>a.type==='CreditCard')
+    .reduce((s,a)=>s+(a.net<0?Math.abs(a.net):0),0);
+  const bnplLiab=Object.values(acctNetMap).filter(a=>a.type==='BNPL')
+    .reduce((s,a)=>s+(a.net<0?Math.abs(a.net):0),0);
+  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense')
+    .reduce((s,c)=>s+(c.amount_base||0),0);
   const totalLiab=loanLiab+ccLiab+bnplLiab+pendingLiab;
   const netWorth=totalAssets-totalLiab;
-  // Liquid cash for widgets = bank+cash balance including negative
-  const liquidCash=liquidCashCalc;
-
-  // liquidCash already computed above in net worth section
-  // Free cash account selection (for widget)
-  const freeCashAccounts = JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
+  const freeCashAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
 
   cfg.forEach(w=>{
     const div=document.createElement('div');div.className='widget';
@@ -2076,7 +2083,7 @@ function renderProfile(){
       <div class="setting-row">
         <div><div class="setting-lbl">Display Currency</div></div>
         <select class="field-select" style="width:100px;padding:6px 10px" onchange="saveProfSetting('currency',this.value)">
-          ${['AED','USD','EUR','GBP','CAD'].map(c=>`<option ${c===currency?'selected':''}>${c}</option>`).join('')}
+          ${['AED','USD','EUR','GBP','CAD','SAR','LBP','CHF','AUD'].map(c=>`<option ${c===currency?'selected':''}>${c}</option>`).join('')}
         </select>
       </div>
       <div class="setting-row">
@@ -2110,6 +2117,7 @@ function saveProfSetting(key,val){
   localStorage.setItem('qeema_'+key,val);
   renderProfile();
   if(key==='name'){const sub=document.getElementById('drawer-sub');if(sub)sub.textContent='Your Personal CFO · '+val;}
+  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.3';}
 }
 function toggleTheme(isLight){
   localStorage.setItem('qeema_theme',isLight?'light':'dark');
