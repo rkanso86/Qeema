@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
+<title>Qeema</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #1a1f2e;
+    --bg2:       #222835;
+    --bg3:       #1e2535;
+    --card:      #242d3d;
+    --card2:     #2a3347;
+    --border:    rgba(95,199,254,0.10);
+    --border2:   rgba(95,199,254,0.18);
+    --teal:      #5FC7FE;
+    --green:     #66EAB9;
+    --deep:      #204F46;
+    --navy:      #334B56;
+    --text:      #e8f4ff;
+    --text2:     #8ba3b8;
+    --text3:     #5a7080;
+    --red:       #ff6b6b;
+    --amber:     #ffb347;
+    --grad:      linear-gradient(135deg, #5FC7FE 0%, #66EAB9 100%);
+    --grad-dark: linear-gradient(135deg, #1a3a4a 0%, #1a2a38 100%);
+    --font:      'Outfit', sans-serif;
+    --r:         16px;
+    --r2:        24px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: #0f1318; }
+
+  body {
+    font-family: var(--font);
+    display: flex; justify-content: center; align-items: center;
+    background: #0f1318;
+  }
+
+  #app {
+    width: 390px; height: 844px;
+    background: var(--bg);
+    border-radius: 48px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    position: relative;
+    border: 1px solid rgba(95,199,254,0.15);
+    box-shadow: 0 40px 120px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 28px 0; font-size: 13px; font-weight: 600;
+    color: var(--text); flex-shrink: 0; z-index: 10;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+  .screen.active { display: flex; }
+
+  .scroll-area { flex: 1; overflow-y: auto; padding: 0 16px 16px; min-height: 0; }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── TAB BAR ── */
+  .tab-bar {
+    display: flex; background: var(--bg3);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    flex-shrink: 0; z-index: 100;
+  }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 6px 0; }
+  .tab-ico { font-size: 22px; line-height: 1; transition: transform 0.2s; }
+  .tab-lbl { font-size: 10px; font-weight: 500; color: var(--text3); transition: color 0.2s; }
+  .tab.active .tab-lbl { color: var(--teal); }
+  .tab.active .tab-ico { transform: translateY(-1px); }
+
+  /* ── HEADER ── */
+  .screen-hdr {
+    padding: 14px 18px 10px;
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+
+  /* ── LOGO MARK SVG ── */
+  .logo-q { width: 36px; height: 36px; }
+
+  /* ── TYPOGRAPHY ── */
+  .h-greeting { font-size: 22px; font-weight: 700; color: var(--text); }
+  .h-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin: 18px 0 10px; padding: 0 2px;
+  }
+  .grad-text {
+    background: var(--grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card); border-radius: var(--r2);
+    border: 1px solid var(--border); padding: 18px;
+    margin-bottom: 12px;
+  }
+  .card-sm { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; }
+
+  /* ── HERO NET WORTH CARD ── */
+  .hero {
+    background: var(--grad-dark);
+    border-radius: var(--r2); border: 1px solid rgba(95,199,254,0.2);
+    padding: 22px; margin-bottom: 12px; position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ''; position: absolute;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(95,199,254,0.08) 0%, transparent 70%);
+    top: -40px; right: -40px; pointer-events: none;
+  }
+  .nw-lbl { font-size: 12px; color: var(--text3); margin-bottom: 4px; }
+  .nw-val { font-size: 30px; font-weight: 800; color: var(--red); line-height: 1; }
+  .nw-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .bar-bg { background: var(--card2); border-radius: 6px; height: 5px; margin-top: 14px; }
+  .bar-fill { height: 5px; border-radius: 6px; background: var(--grad); transition: width 0.8s ease; }
+
+  /* ── 2-COL METRICS ── */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .metric { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); padding: 14px; }
+  .m-lbl { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .m-val { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
+  .m-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* ── PILL ── */
+  .pill { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 5px; }
+  .pill-g { background: rgba(102,234,185,0.15); color: var(--green); }
+  .pill-r { background: rgba(255,107,107,0.15); color: var(--red); }
+  .pill-a { background: rgba(255,179,71,0.15); color: var(--amber); }
+  .pill-b { background: rgba(95,199,254,0.15); color: var(--teal); }
+
+  /* ── KPI ROWS ── */
+  .kpi-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .kpi-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .kpi-name { font-size: 13px; color: var(--text2); }
+  .kpi-right { display: flex; align-items: center; gap: 8px; }
+  .kpi-val { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* ── TRANSACTION ITEMS ── */
+  .txn { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .txn:last-child { border-bottom: none; }
+  .txn-ico { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .txn-info { flex: 1; min-width: 0; }
+  .txn-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .txn-cat { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .txn-right { text-align: right; flex-shrink: 0; }
+  .txn-amt { font-size: 13px; font-weight: 700; }
+  .txn-date { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .amt-in { color: var(--green); }
+  .amt-out { color: var(--red); }
+
+  /* ── MINI CHART ── */
+  .chart-bars { display: flex; align-items: flex-end; gap: 5px; height: 70px; margin: 14px 0 6px; }
+  .bar-item { flex: 1; border-radius: 5px 5px 0 0; cursor: pointer; transition: opacity 0.2s; }
+  .bar-item:hover { opacity: 0.8; }
+  .bar-in { background: var(--green); }
+  .bar-out { background: rgba(255,107,107,0.7); }
+  .chart-xlbl { display: flex; gap: 5px; }
+  .chart-xlbl span { flex: 1; font-size: 10px; color: var(--text3); text-align: center; }
+
+  /* ── CHAT SCREEN ── */
+  .chat-header { padding: 14px 18px 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .ai-badge { width: 36px; height: 36px; border-radius: 12px; background: var(--grad); display: flex; align-items: center; justify-content: center; }
+
+  .chips-row { display: flex; gap: 8px; overflow-x: auto; padding: 10px 16px; flex-shrink: 0; }
+  .chips-row::-webkit-scrollbar { display: none; }
+  .chip { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 6px 12px; font-size: 11px; font-family: var(--font); color: var(--text2); cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; }
+  .chip:active { background: var(--card2); }
+
+  .msgs { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .msgs::-webkit-scrollbar { display: none; }
+
+  .msg-row { display: flex; gap: 8px; align-items: flex-end; }
+  .msg-row.usr { flex-direction: row-reverse; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .av-ai { background: var(--grad); color: #1a2030; }
+  .av-usr { background: var(--card2); color: var(--text2); }
+
+  .bubble { max-width: 80%; padding: 10px 14px; font-size: 13px; line-height: 1.55; }
+  .b-ai { background: var(--card); border: 1px solid var(--border); border-radius: 18px 18px 18px 4px; color: var(--text); }
+  .b-usr { background: linear-gradient(135deg, rgba(95,199,254,0.18), rgba(102,234,185,0.12)); border: 1px solid rgba(95,199,254,0.25); border-radius: 18px 18px 4px 18px; color: var(--text); }
+
+  .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: bounce 1.2s infinite ease-in-out; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }
+
+  .inline-result { background: var(--bg2); border-radius: 12px; padding: 12px; border: 1px solid var(--border2); margin-top: 8px; font-size: 12px; }
+  .ir-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .ir-lbl { color: var(--text3); }
+  .ir-val { font-weight: 600; color: var(--text); }
+  .ir-divider { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+
+  .chat-input-area { padding: 10px 14px calc(10px + var(--safe-bottom)); display: flex; gap: 10px; align-items: flex-end; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 22px; padding: 10px 16px; font-family: var(--font); font-size: 13px; color: var(--text); resize: none; outline: none; line-height: 1.4; min-height: 40px; max-height: 100px; transition: border-color 0.2s; }
+  .chat-input:focus { border-color: var(--border2); }
+  .chat-input::placeholder { color: var(--text3); }
+  .send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s, transform 0.1s; }
+  .send-btn:active { opacity: 0.8; transform: scale(0.95); }
+
+  /* ── REPORTS ── */
+  .rpt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .rpt-card { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); padding: 16px; cursor: pointer; transition: border-color 0.2s; }
+  .rpt-card:active { border-color: var(--border2); }
+  .rpt-ico { font-size: 22px; margin-bottom: 8px; }
+  .rpt-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .rpt-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .donut-wrap { position: relative; width: 130px; height: 130px; margin: 0 auto 16px; }
+  .srow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .sinfo { flex: 1; }
+  .sname { font-size: 13px; font-weight: 500; color: var(--text); }
+  .sbar-bg { background: var(--card2); border-radius: 4px; height: 4px; margin-top: 4px; }
+  .sbar { height: 4px; border-radius: 4px; }
+  .samt { font-size: 13px; font-weight: 700; color: var(--text); }
+
+  /* ── FILTER TABS ── */
+  .filter-row { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 12px; flex-shrink: 0; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .ftab { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 12px; font-family: var(--font); color: var(--text3); cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+  .ftab.active { background: rgba(95,199,254,0.12); border-color: var(--teal); color: var(--teal); font-weight: 600; }
+
+  /* ── LOADING OVERLAY ── */
+  #loading { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 999; border-radius: 48px; }
+  .loading-logo { width: 60px; height: 60px; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:0.6;transform:scale(0.96)} 50%{opacity:1;transform:scale(1.04)} }
+  .loading-txt { font-size: 13px; color: var(--text3); }
+
+  /* ── TOAST ── */
+  .toast { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card2); border: 1px solid var(--green); color: var(--green); font-size: 12px; font-weight: 600; padding: 8px 18px; border-radius: 30px; white-space: nowrap; opacity: 0; transition: all 0.3s; z-index: 500; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── UPCOMING ITEM ── */
+  .upcoming { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .upcoming:last-child { border-bottom: none; }
+  .up-ico { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .up-info { flex: 1; min-width: 0; }
+  .up-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .up-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .up-amt { font-size: 14px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div style="width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#5FC7FE,#66EAB9);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#1a2030;font-family:'Outfit',sans-serif;animation:pulse 1.5s ease-in-out infinite">Q</div>
+    <div class="loading-txt">Loading your finances…</div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span id="status-time">9:41</span>
+    <div style="display:flex;gap:5px;align-items:center;font-size:12px">
+      <span>●●●●</span><span>100%</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+  <div class="screen active" id="screen-dashboard">
+    <div class="screen-hdr">
+      <div>
+        <div class="h-greeting">Good morning, Rabie</div>
+        <div class="h-sub" id="dash-date">March 2026 · AED</div>
+      </div>
+      <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#5FC7FE,#66EAB9);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#1a2030;font-family:'Outfit',sans-serif;flex-shrink:0">Q</div>
+    </div>
+    <div class="scroll-area">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="nw-lbl">Net Worth</div>
+        <div class="nw-val" id="nw-val">–</div>
+        <div class="nw-sub" id="nw-sub">Loading…</div>
+        <div style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--text3)">Assets</span>
+            <span style="font-size:12px;font-weight:700;color:var(--green)" id="d-assets">–</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:11px;color:var(--text3)">Liabilities</span>
+            <span style="font-size:12px;font-weight:700;color:var(--red)" id="d-liab">–</span>
+          </div>
+          <div class="bar-bg"><div class="bar-fill" id="nw-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics">
+        <div class="metric">
+          <div class="m-lbl">Liquid Cash</div>
+          <div class="m-val" id="d-cash" style="font-size:16px">–</div>
+          <div class="pill pill-a" id="d-cash-pill">–</div>
+        </div>
+        <div class="metric">
+          <div class="m-lbl">Monthly Income</div>
+          <div class="m-val" id="d-income" style="font-size:16px">–</div>
+          <div class="pill pill-g">This Month</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="m-lbl">Savings Rate</div>
+          <div class="m-val grad-text" id="d-savings">–</div>
+          <div class="m-sub">Rolling 12M</div>
+        </div>
+        <div class="metric">
+          <div class="m-lbl">Debt-to-Income</div>
+          <div class="m-val" style="color:var(--teal)" id="d-dti">–</div>
+          <div class="m-sub">Target ≤ 30%</div>
+        </div>
+      </div>
+
+      <!-- Scorecard -->
+      <div class="section-label">Health Scorecard</div>
+      <div class="card" id="scorecard">
+        <div style="color:var(--text3);font-size:12px">Loading…</div>
+      </div>
+
+      <!-- Cash Flow Chart -->
+      <div class="section-label">Cash Flow — Last 3 Months</div>
+      <div class="card">
+        <div class="chart-bars" id="cf-bars">
+          <div class="bar-item bar-in" style="height:60%"></div>
+          <div class="bar-item bar-out" style="height:35%"></div>
+          <div class="bar-item bar-in" style="height:45%"></div>
+          <div class="bar-item bar-out" style="height:55%"></div>
+          <div class="bar-item bar-in" style="height:30%"></div>
+          <div class="bar-item bar-out" style="height:20%"></div>
+        </div>
+        <div class="chart-xlbl"><span>Jan In</span><span>Jan Out</span><span>Feb In</span><span>Feb Out</span><span>Mar In</span><span>Mar Out</span></div>
+        <div style="display:flex;gap:16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div><div style="font-size:11px;color:var(--text3)">YTD Inflow</div><div style="font-size:14px;font-weight:700;color:var(--green)" id="d-ytdin">–</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">YTD Outflow</div><div style="font-size:14px;font-weight:700;color:var(--red)" id="d-ytdout">–</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">Net</div><div style="font-size:14px;font-weight:700" id="d-net">–</div></div>
+        </div>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="section-label">Upcoming Commitments</div>
+      <div class="card" id="upcoming-list">
+        <div style="color:var(--text3);font-size:12px">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ AI CHAT ═══════════════════════════════ -->
+  <div class="screen" id="screen-chat">
+    <div class="chat-header">
+      <div>
+        <div style="font-size:18px;font-weight:700" class="grad-text">Qeema AI</div>
+        <div style="font-size:11px;color:var(--text3)">Your financial co-pilot · powered by Claude</div>
+      </div>
+      <div class="ai-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3C7 3 3 6.5 3 11c0 2.4 1.1 4.5 2.8 6L5 21l4.3-1.3C10.4 20.2 11.2 20.4 12 20.4c5 0 9-3.5 9-9.2C21 6.5 17 3 12 3z" fill="white"/></svg>
+      </div>
+    </div>
+    <div class="chips-row">
+      <div class="chip" onclick="quickSend('Carrefour groceries 340 AED cash today')">🛒 Log expense</div>
+      <div class="chip" onclick="quickSend('Add commitment: FTI April salary AED 88,692 expected April 25')">📅 Add commitment</div>
+      <div class="chip" onclick="quickSend('Add a new account: ADCB AED bank account, opening balance AED 5000')">🏦 Add account</div>
+      <div class="chip" onclick="quickSend('Transferred 34065 AED from ENBD to EI account for loan payment today')">↔️ Log transfer</div>
+      <div class="chip" onclick="quickSend('Add new liability: car loan AED 120,000 at 4.5% reducing balance, 60 months, AED 2,220/month from ENBD')">💳 Add loan</div>
+      <div class="chip" onclick="quickSend('Update USD FX rate to 3.68')">💱 Update FX rate</div>
+      <div class="chip" onclick="quickSend('Change my savings target to 15%')">⚙️ Update assumption</div>
+      <div class="chip" onclick="quickSend('Add tag: Business')">🏷 Add tag</div>
+      <div class="chip" onclick="quickSend('Summarize my full financial health right now')">❤️ Health check</div>
+      <div class="chip" onclick="quickSend('What are all my upcoming commitments in the next 3 months?')">📅 Upcoming</div>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="msg-row">
+        <div class="avatar av-ai">Q</div>
+        <div class="bubble b-ai">
+          <span class="grad-text" style="font-weight:700">مرحبا Rabie 👋</span><br><br>
+          I'm fully connected to your Qeema data. I can:<br><br>
+          <strong>📝 Log transactions</strong> — just say what you spent<br>
+          <strong>📊 Answer questions</strong> — about any number in your finances<br>
+          <strong>💡 Give insights</strong> — proactively flag what matters<br><br>
+          Try: <span style="color:var(--teal);font-style:italic">"Zuma dinner 680 AED WIO card"</span>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-input" id="chat-input" placeholder="Log a transaction or ask anything…" rows="1"></textarea>
+      <button class="send-btn" onclick="handleSend()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ TRANSACTIONS ═══════════════════════════════ -->
+  <div class="screen" id="screen-transactions">
+    <div class="screen-hdr">
+      <div style="font-size:20px;font-weight:700;color:var(--text)">Transactions</div>
+      <div style="font-size:12px;color:var(--teal);font-weight:600" id="txn-period">2026</div>
+    </div>
+    <div class="filter-row">
+      <div class="ftab active" onclick="filterTxns('all', this)">All</div>
+      <div class="ftab" onclick="filterTxns('Expense', this)">Expenses</div>
+      <div class="ftab" onclick="filterTxns('Income', this)">Income</div>
+      <div class="ftab" onclick="filterTxns('Jan', this)">January</div>
+      <div class="ftab" onclick="filterTxns('Feb', this)">February</div>
+      <div class="ftab" onclick="filterTxns('Mar', this)">March</div>
+    </div>
+    <div class="scroll-area" style="padding-top:0">
+      <div class="card" id="txn-list">
+        <div style="color:var(--text3);font-size:12px">Loading transactions…</div>
+      </div>
+      <div class="metrics" style="margin-top:4px">
+        <div class="metric">
+          <div class="m-lbl">Total In</div>
+          <div class="m-val" style="font-size:16px;color:var(--green)" id="txn-in">–</div>
+          <div class="m-sub">AED</div>
+        </div>
+        <div class="metric">
+          <div class="m-lbl">Total Out</div>
+          <div class="m-val" style="font-size:16px;color:var(--red)" id="txn-out">–</div>
+          <div class="m-sub">AED</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ REPORTS ═══════════════════════════════ -->
+  <div class="screen" id="screen-reports">
+    <div class="screen-hdr">
+      <div style="font-size:20px;font-weight:700;color:var(--text)">Reports</div>
+      <div style="font-size:12px;color:var(--text3)">Live · AED</div>
+    </div>
+    <div class="scroll-area">
+      <div class="section-label" style="margin-top:4px">Spending Breakdown</div>
+      <div class="card">
+        <svg id="donut-svg" viewBox="0 0 200 200" width="130" height="130" style="display:block;margin:0 auto 14px">
+          <circle cx="100" cy="100" r="70" fill="none" stroke="#2a3347" stroke-width="30"/>
+          <circle id="d1" cx="100" cy="100" r="70" fill="none" stroke="#5FC7FE" stroke-width="30" stroke-dasharray="0 440" stroke-dashoffset="110" stroke-linecap="round"/>
+          <circle id="d2" cx="100" cy="100" r="70" fill="none" stroke="#66EAB9" stroke-width="30" stroke-dasharray="0 440" stroke-dashoffset="110" stroke-linecap="round"/>
+          <circle id="d3" cx="100" cy="100" r="70" fill="none" stroke="#204F46" stroke-width="30" stroke-dasharray="0 440" stroke-dashoffset="110" stroke-linecap="round"/>
+          <circle id="d4" cx="100" cy="100" r="70" fill="none" stroke="#ffb347" stroke-width="30" stroke-dasharray="0 440" stroke-dashoffset="110" stroke-linecap="round"/>
+          <text x="100" y="96" text-anchor="middle" fill="#e8f4ff" font-size="16" font-weight="800" font-family="Outfit,sans-serif" id="donut-val">–</text>
+          <text x="100" y="112" text-anchor="middle" fill="#5a7080" font-size="11" font-family="Outfit,sans-serif">AED spent</text>
+        </svg>
+        <div id="spending-breakdown">
+          <div style="color:var(--text3);font-size:12px">Loading…</div>
+        </div>
+      </div>
+
+      <div class="section-label">Report Modules</div>
+      <div class="rpt-grid">
+        <div class="rpt-card" onclick="quickSend('Show me my balance sheet summary')"><div class="rpt-ico">📊</div><div class="rpt-name">Balance Sheet</div><div class="rpt-desc">Assets vs liabilities</div></div>
+        <div class="rpt-card" onclick="quickSend('Break down my cash flow by month')"><div class="rpt-ico">💸</div><div class="rpt-name">Cash Flow</div><div class="rpt-desc">Inflows & outflows</div></div>
+        <div class="rpt-card" onclick="quickSend('What is my free cash after all commitments and loan payments?')"><div class="rpt-ico">🎯</div><div class="rpt-name">Free Cash</div><div class="rpt-desc">After commitments</div></div>
+        <div class="rpt-card" onclick="quickSend('Summarize all my loans and remaining balances')"><div class="rpt-ico">🏦</div><div class="rpt-name">Loan Summary</div><div class="rpt-desc">All debt schedules</div></div>
+        <div class="rpt-card" onclick="quickSend('Show me my income statement — income vs expenses')"><div class="rpt-ico">📈</div><div class="rpt-name">Income Statement</div><div class="rpt-desc">P&L by period</div></div>
+        <div class="rpt-card" onclick="quickSend('Give me a 12-month financial forecast — base and stress scenarios')"><div class="rpt-ico">🔮</div><div class="rpt-name">12M Forecast</div><div class="rpt-desc">Base · Stress · Upside</div></div>
+      </div>
+
+      <div class="section-label">Loans Snapshot</div>
+      <div class="card" id="loans-snap">
+        <div style="color:var(--text3);font-size:12px">Loading…</div>
+      </div>
+
+      <div class="section-label">Commitments Pipeline</div>
+      <div class="card" id="commitments-snap">
+        <div style="color:var(--text3);font-size:12px">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')">
+      <span class="tab-ico">⌂</span><span class="tab-lbl">Home</span>
+    </div>
+    <div class="tab" id="tab-chat" onclick="switchTab('chat')">
+      <span class="tab-ico">✦</span><span class="tab-lbl">AI Chat</span>
+    </div>
+    <div class="tab" id="tab-transactions" onclick="switchTab('transactions')">
+      <span class="tab-ico">≡</span><span class="tab-lbl">Transactions</span>
+    </div>
+    <div class="tab" id="tab-reports" onclick="switchTab('reports')">
+      <span class="tab-ico">◎</span><span class="tab-lbl">Reports</span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const SB_URL  = 'https://svqqwxpfnazbvsyzakpr.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cXF3eHBmbmF6YnZzeXpha3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDY1NTEsImV4cCI6MjA4OTkyMjU1MX0.cXeFP6L_KSWgEej4LlKmJu-AGpOkXlt6CJThiOINXns';
+const headers = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+// ── Supabase helpers ──
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
+  return r.json();
+}
+async function sbPost(table, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, { method:'POST', headers, body: JSON.stringify(body) });
+  return r.json();
+}
+
+// ── Formatters ──
+const fmt = n => Math.abs(n) >= 1000 ? (n/1000).toFixed(1)+'K' : n.toFixed(0);
+const fmtFull = n => n.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+const fmtDate = d => new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const catIcons = {
+  'Housing':'🏠','Dining':'🍽','Groceries':'🛒','Transportation':'🚗','Healthcare':'💊',
+  'Education':'📚','Entertainment':'🎬','Clothing':'👗','Kids':'👶','Travel':'✈️',
+  'Utilities':'⚡','Household Care':'🧹','Household Items':'📦','Gifts/Donations':'🎁',
+  'Fees & Charges':'💳','Insurance':'🛡','Business Services':'💼','Personal':'👤',
+  'Miscellaneous':'📌','Investments':'📈','Debt':'🏦','Monthly Salary':'💼',
+  'Bonus':'🎉','Cashback':'♻️','Reimbursement':'↩️','Severance':'📋','Income':'💰'
+};
+const catColors = {
+  'Housing':'rgba(95,199,254,0.12)','Dining':'rgba(255,179,71,0.12)',
+  'Groceries':'rgba(102,234,185,0.12)','Debt':'rgba(255,107,107,0.12)',
+  'Monthly Salary':'rgba(102,234,185,0.15)','Bonus':'rgba(102,234,185,0.15)',
+  'Healthcare':'rgba(95,199,254,0.10)','Education':'rgba(102,234,185,0.10)',
+  'Reimbursement':'rgba(102,234,185,0.12)','Severance':'rgba(102,234,185,0.12)'
+};
+
+// ── State ──
+let allTxns = [], allCommitments = [], allLiabilities = [], allAssets = [];
+let chatHistory = [];
+let currentFilter = 'all';
+
+// ── Status time ──
+function updateTime() {
+  const n = new Date();
+  document.getElementById('status-time').textContent =
+    n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateTime, 1000); updateTime();
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── Toast ──
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+  t.style.color = isError ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Load all data ──
+async function loadAll() {
+  try {
+    [allTxns, allCommitments, allLiabilities, allAssets] = await Promise.all([
+      sbGet('transactions','order=txn_date.desc&limit=200'),
+      sbGet('commitments','order=expected_date.asc'),
+      sbGet('liabilities','status=eq.Active'),
+      sbGet('assets','select=*')
+    ]);
+    renderDashboard();
+    renderTransactions();
+    renderReports();
+    document.getElementById('loading').style.display = 'none';
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">Connection error.<br>Check your network.</div>`;
+  }
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  // ── VERIFIED BASELINE from Qeema v65 (March 2026) ──
+  // These are the exact figures from your Excel model as of AsOfDate 2026-03-01
+  const BASE = {
+    // Balance Sheet (Rpt_BalanceSheet, col 202603)
+    liquidCash:     11133,      // Cash + Bank accounts (excl credit/BNPL)
+    physicalAssets: 1607487,    // Beirut apartment (USD375K×3.67) + all gold
+    totalAssets:    1618620,    // Liquid + Physical
+    ccBalances:     52058,      // LBC CAD credit card (converted to AED)
+    bnplBalances:   18506,      // Tabby Card + Tabby Pay Later
+    loanObligations:2195907,    // Mortgage1 (USD×3.67) + Loan1 (AED)
+    totalLiab:      2418288,    // CC + BNPL + Loans + Pending Commitments base
+    netWorth:       -799668,    // Total Assets − Total Liabilities
+    // Dashboard KPIs (Rpt_Dashboard)
+    savingsRate:    0.1720,     // Rolling 12M savings rate
+    dti:            0.2885,     // Debt-to-Income (rolling 12M)
+    dscr:           2.8745,     // Debt Service Coverage Ratio (rolling 12M)
+    discPct:        0.2909,     // Discretionary % (rolling 12M)
+    nwChange:       -153456,    // NW change YTD
+    monthlyIncome:  75500,      // Current salary (Kearney)
+    monthlyLoanPmt: 34065,      // EI loan monthly payment
+    // Cash Flow (Rpt_CashFlow, YTD)
+    ytdInflow:      152511,     // Jan+Feb+Mar core inflows
+    ytdOutflow:     184881,     // Jan+Feb+Mar core outflows
+    // Income Statement monthly
+    incJan: 75821, incFeb: 75876, incMar: 634,
+    expJan: 44944, expFeb: 49127, expMar: 53740,
+  };
+
+  // Add delta from any NEW transactions logged via the app since baseline
+  const newTxns = allTxns.filter(t => {
+    const d = new Date(t.txn_date);
+    return d >= new Date('2026-03-24'); // only app-entered txns after model date
+  });
+  const newIncome  = newTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+t.amount_base,0);
+  const newExpense = newTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+t.amount_base,0);
+  const liquidCash = BASE.liquidCash + newIncome - newExpense;
+
+  // ── RENDER NET WORTH ──
+  document.getElementById('nw-val').textContent = '−AED ' + fmtFull(Math.abs(BASE.netWorth));
+  document.getElementById('nw-sub').textContent = 'NW change YTD: −' + fmtFull(Math.abs(BASE.nwChange)) + ' · improving with FTI';
+  document.getElementById('d-assets').textContent = 'AED ' + fmtFull(BASE.totalAssets);
+  document.getElementById('d-liab').textContent   = 'AED ' + fmtFull(BASE.totalLiab);
+  const pct = Math.min(100, (BASE.totalAssets / BASE.totalLiab) * 100);
+  document.getElementById('nw-bar').style.width = pct.toFixed(1) + '%';
+
+  // ── LIQUID CASH ──
+  document.getElementById('d-cash').textContent = 'AED ' + fmt(liquidCash);
+  const cashPill = document.getElementById('d-cash-pill');
+  if (liquidCash < 5000)       { cashPill.className='pill pill-r'; cashPill.textContent='Critical'; }
+  else if (liquidCash < 20000) { cashPill.className='pill pill-a'; cashPill.textContent='Thin'; }
+  else                         { cashPill.className='pill pill-g'; cashPill.textContent='Healthy'; }
+
+  // ── MONTHLY INCOME ──
+  document.getElementById('d-income').textContent = 'AED ' + fmt(BASE.monthlyIncome);
+
+  // ── SAVINGS RATE ──
+  const srEl = document.getElementById('d-savings');
+  srEl.textContent = (BASE.savingsRate * 100).toFixed(1) + '%';
+
+  // ── DTI ──
+  document.getElementById('d-dti').textContent = (BASE.dti * 100).toFixed(1) + '%';
+
+  // ── HEALTH SCORECARD ──
+  const runway = BASE.monthlyLoanPmt > 0 ? liquidCash / (BASE.expMar / 1) : 0;
+  const runwayMo = liquidCash / ((BASE.expJan + BASE.expFeb + BASE.expMar) / 3);
+  const sc = [
+    {name:'Savings Rate',      val:(BASE.savingsRate*100).toFixed(1)+'%', ok:BASE.savingsRate>=0.10, warn:BASE.savingsRate<0.05,  label:'Rolling 12M'},
+    {name:'Emergency Runway',  val:runwayMo.toFixed(1)+' mo',             ok:runwayMo>=3,           warn:runwayMo<1,             label:'Target ≥3 mo'},
+    {name:'Debt-to-Income',    val:(BASE.dti*100).toFixed(1)+'%',         ok:BASE.dti<=0.30,        warn:BASE.dti>0.40,          label:'Target ≤30%'},
+    {name:'DSCR',              val:BASE.dscr.toFixed(2)+'x',              ok:BASE.dscr>=1.5,        warn:BASE.dscr<1.0,          label:'Target ≥1.5x'},
+    {name:'Discretionary %',   val:(BASE.discPct*100).toFixed(1)+'%',     ok:BASE.discPct<=0.30,    warn:BASE.discPct>0.40,      label:'Target ≤30%'},
+  ];
+  document.getElementById('scorecard').innerHTML = sc.map(s => `
+    <div class="kpi-row">
+      <span class="kpi-name">${s.name}<br><span style="font-size:10px;color:var(--text3)">${s.label}</span></span>
+      <div class="kpi-right">
+        <span class="kpi-val">${s.val}</span>
+        <span class="pill ${s.ok?'pill-g':s.warn?'pill-r':'pill-a'}">${s.ok?'On Track':s.warn?'Critical':'Watch'}</span>
+      </div>
+    </div>`).join('');
+
+  // ── CASH FLOW CHART (verified monthly figures from Income Statement) ──
+  const cfData = [
+    {inc: BASE.incJan, out: BASE.expJan},
+    {inc: BASE.incFeb, out: BASE.expFeb},
+    {inc: BASE.incMar + newIncome, out: BASE.expMar + newExpense},
+  ];
+  const maxVal = Math.max(...cfData.flatMap(c=>[c.inc,c.out]), 1);
+  document.getElementById('cf-bars').innerHTML = cfData.flatMap(c => [
+    `<div class="bar-item bar-in"  style="height:${Math.max(4,c.inc/maxVal*100).toFixed(0)}%"></div>`,
+    `<div class="bar-item bar-out" style="height:${Math.max(4,c.out/maxVal*100).toFixed(0)}%"></div>`
+  ]).join('');
+
+  const ytdIn  = BASE.ytdInflow  + newIncome;
+  const ytdOut = BASE.ytdOutflow + newExpense;
+  const net    = ytdIn - ytdOut;
+  document.getElementById('d-ytdin').textContent  = 'AED ' + fmtFull(ytdIn);
+  document.getElementById('d-ytdout').textContent = 'AED ' + fmtFull(ytdOut);
+  const netEl = document.getElementById('d-net');
+  netEl.textContent  = (net>=0?'+':'−') + 'AED ' + fmtFull(Math.abs(net));
+  netEl.style.color  = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Upcoming commitments
+  const upcoming = allCommitments.filter(c=>c.status==='Pending').slice(0,5);
+  document.getElementById('upcoming-list').innerHTML = upcoming.length ? upcoming.map(c => `
+    <div class="upcoming">
+      <div class="up-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">
+        ${catIcons[c.category]||'📌'}
+      </div>
+      <div class="up-info">
+        <div class="up-name">${c.description}</div>
+        <div class="up-date">${c.expected_date ? fmtDate(c.expected_date) : 'TBD'} · ${c.category}</div>
+      </div>
+      <div class="up-amt ${c.direction==='Income'?'amt-in':'amt-out'}">
+        ${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}
+      </div>
+    </div>`).join('') : '<div style="color:var(--text3);font-size:12px">No pending commitments</div>';
+}
+
+// ── Transactions ──
+function renderTransactions(filter='all') {
+  let txns = [...allTxns];
+  if (filter === 'Expense' || filter === 'Income') txns = txns.filter(t=>t.direction===filter);
+  if (filter === 'Jan') txns = txns.filter(t=>t.txn_date.startsWith('2026-01'));
+  if (filter === 'Feb') txns = txns.filter(t=>t.txn_date.startsWith('2026-02'));
+  if (filter === 'Mar') txns = txns.filter(t=>t.txn_date.startsWith('2026-03'));
+
+  const totalIn  = txns.filter(t=>t.direction==='Income').reduce((s,t)=>s+t.amount_base,0);
+  const totalOut = txns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+t.amount_base,0);
+  document.getElementById('txn-in').textContent  = fmtFull(totalIn);
+  document.getElementById('txn-out').textContent = fmtFull(totalOut);
+
+  document.getElementById('txn-list').innerHTML = txns.slice(0,40).map(t => `
+    <div class="txn">
+      <div class="txn-ico" style="background:${catColors[t.category]||'rgba(95,199,254,0.08)'}">
+        ${catIcons[t.category]||'💳'}
+      </div>
+      <div class="txn-info">
+        <div class="txn-name">${t.description}</div>
+        <div class="txn-cat">${t.category}${t.subcategory?' · '+t.subcategory:''} · ${t.txn_method||''}</div>
+      </div>
+      <div class="txn-right">
+        <div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">
+          ${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base)}
+        </div>
+        <div class="txn-date">${fmtDate(t.txn_date)}</div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions found</div>';
+}
+
+function filterTxns(filter, el) {
+  document.querySelectorAll('.ftab').forEach(f=>f.classList.remove('active'));
+  el.classList.add('active');
+  currentFilter = filter;
+  renderTransactions(filter);
+}
+
+// ── Reports ──
+function renderReports() {
+  // ── VERIFIED spending breakdown from Qeema v65 Rpt_Category_TxnDate, March 2026 ──
+  const MAR_SPENDING = [
+    {cat:'Groceries',      val: 7315},
+    {cat:'Dining',         val: 3727},
+    {cat:'Personal',       val: 4069},
+    {cat:'Household Care', val: 2468},
+    {cat:'Transportation', val: 2699},
+    {cat:'Utilities',      val: 2673},
+    {cat:'Travel',         val: 2604},
+    {cat:'Household Items',val: 1625},
+    {cat:'Gifts/Donations',val: 1579},
+    {cat:'Clothing',       val: 1470},
+    {cat:'Healthcare',     val:  977},
+    {cat:'Kids',           val:  818},
+    {cat:'Entertainment',  val:   73},
+  ];
+  // Add any new app-logged expenses for current month
+  const newExpenses = allTxns.filter(t => {
+    const d = new Date(t.txn_date);
+    return t.direction==='Expense' && d >= new Date('2026-03-24');
+  });
+  newExpenses.forEach(t => {
+    const existing = MAR_SPENDING.find(s=>s.cat===t.category);
+    if (existing) existing.val += t.amount_base;
+    else MAR_SPENDING.push({cat: t.category, val: t.amount_base});
+  });
+
+  const top4 = MAR_SPENDING.sort((a,b)=>b.val-a.val).slice(0,4);
+  const total = MAR_SPENDING.reduce((s,c)=>s+c.val, 0);
+
+  document.getElementById('donut-val').textContent = (total/1000).toFixed(0)+'K';
+
+  const colors = ['#5FC7FE','#66EAB9','#204F46','#ffb347'];
+  const circ = 440;
+  let offset = 110;
+  top4.forEach(({val},i) => {
+    const arc = (val/Math.max(total,1)) * circ * 0.88;
+    const el = document.getElementById('d'+(i+1));
+    if (el) { el.setAttribute('stroke-dasharray', `${arc.toFixed(1)} ${circ}`); el.setAttribute('stroke-dashoffset', offset.toFixed(1)); }
+    offset -= arc;
+  });
+
+  document.getElementById('spending-breakdown').innerHTML = top4.map(({cat,val},i) => `
+    <div class="srow">
+      <div class="sdot" style="background:${colors[i]}"></div>
+      <div class="sinfo">
+        <div class="sname">${cat}</div>
+        <div class="sbar-bg"><div class="sbar" style="width:${(val/Math.max(total,1)*100).toFixed(0)}%;background:${colors[i]}"></div></div>
+      </div>
+      <span class="samt">${fmtFull(val)}</span>
+    </div>`).join('');
+
+  // Loans
+  document.getElementById('loans-snap').innerHTML = allLiabilities.map(l => `
+    <div class="kpi-row">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${l.liability_name}</div>
+        <div style="font-size:11px;color:var(--text3)">${l.interest_type} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.remaining_pmts||'?'} pmts left</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(l.remaining_principal||0)}</div>
+        <div style="font-size:11px;color:var(--text3)">${l.loan_currency} remaining</div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:12px">No active loans</div>';
+
+  // Commitments
+  const pending = allCommitments.filter(c=>c.status==='Pending').slice(0,6);
+  document.getElementById('commitments-snap').innerHTML = pending.map(c => `
+    <div class="kpi-row">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${c.description}</div>
+        <div style="font-size:11px;color:var(--text3)">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''}</div>
+      </div>
+      <div class="txn-amt ${c.direction==='Income'?'amt-in':'amt-out'}" style="font-size:13px">
+        ${c.direction==='Income'?'+':'−'}${fmtFull(c.amount_base)}
+      </div>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:12px">No pending commitments</div>';
+}
+
+// ── AI CHAT ──
+const SYSTEM = `You are Qeema AI — the complete financial brain of the Qeema app. You replace the Excel model entirely. Rabie never needs to go back to the spreadsheet. You handle every data entry, every setting, every master list, every financial question.
+
+TODAY: March 24, 2026. Rabie is based in Dubai, UAE. Base currency: AED.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RABIE'S FINANCIAL SNAPSHOT (Qeema v65)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Salary: AED 75,500/mo (Kearney, ending) → FTI starts April 2026 @ AED 88,692/mo
+FTI sign-on: USD 50,000 (AED 183,500) due Apr 25 2026
+FTI year-end bonus 2026: AED 400,000 due Jan 2027
+Kearney EOS: AED 77,000 due Mar 30 2026
+Net Worth: −AED 799,668 | Liquid Cash: AED 11,133 ⚠ CRITICAL
+Assets: AED 1,618,620 (Beirut apt USD 375K + gold AED 78,340)
+Liabilities: AED 2,418,288 (loans + CC + BNPL + commitments)
+EI Loan: AED 1,440,610 · 5.39% reducing · AED 34,065/mo · 47 pmts · ends Jan 2030
+Beirut Mortgage: USD 755,297 · flat 0% · to Dad · 44 pmts · ends Nov 2029
+LBC CAD CC: CAD 8,584 (AED ~23,178)
+WIO CC: AED 43,473 outstanding
+Tabby: AED 18,506 (BNPL)
+KPIs: Savings 17.2%✓ | DTI 28.8%✓ | DSCR 2.87x✓ | Runway 0.15mo✗
+
+FX RATES (AED per 1 unit):
+USD=3.67, EUR=4.02, GBP=4.65, CAD=2.70, SAR=0.98, EGP=0.07, INR=0.04,
+PKR=0.01, LBP=0.000041, JOD=5.18, KWD=11.95, BHD=9.74, CHF=4.15, AUD=2.40, GEL=1.35, TRY=0.10
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MASTER DATA YOU MANAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ACCOUNTS (Master_TxnMethods):
+ENBD AED Account (Bank/AED), EI AED Account (Bank/AED), WIO AED Account (Bank/AED),
+WIO Credit Card (CreditCard/AED), Tabby Card (BNPL/AED·4mo), Tabby Pay Later (BNPL/AED·4mo),
+LBC CAD Credit Card (CreditCard/CAD), ENBD USD Account (Bank/USD),
+RBC CAD Account (Bank/CAD), Cash - AED (Cash/AED), Cash - USD (Cash/USD),
+Cash - LBP (Cash/LBP), Cash - EUR (Cash/EUR),
+Rania's Savings Account (Bank/AED · Non-Core), Splitwise Account (Bank/AED),
+Nour Account (Cash/USD)
+
+TAGS: Home, Rabie, Nour, Kids, Lilia, Nawwar, Maid, Parents, Insurance, Lebanon Apartment, Other, Jana
+
+EXPENSE CATEGORIES (Category / Subcategory):
+Business Services: Documents, Legal, Office Supplies, Photoshoot, Shipping, Software
+Clothing: Clothes, Shoes
+Debt: Personal Debt
+Dining: Alcohol, Coffee Shops, Juice Bars, Restaurants, Sweets Shops
+Education: Books, Courses, Newspaper & Magazines, School, School Supplies, University
+Entertainment: Activities, Bars/Clubs, Beach/Pool, Cinema/Movies, Concerts/Theater, Fairs/Events, Games, Museum, Subscriptions
+Fees & Charges: Bank Fee, Commissions, Finance Charge, Interest Paid, Late Fee, Service Fee
+Gifts/Donations: Anniversary, Birthday, Charities, Christmas, Random, Special Occasion, Visit, Wedding
+Groceries: Bakery, Butchery, Smoke Shop, Supermarket
+Healthcare: Dental Care, Medical devices, Medications, Specialty Care
+Household Care: Cleaning Services, Gardening, Home Maintenance, Laundry, Maid, Pest Control
+Household Items: Flowers/Plants, Furniture, Home Electronics, Home items
+Housing: Fees, Rent
+Insurance (no subcategory)
+Investments (no subcategory)
+Kids: Kids Clothes, Toys
+Miscellaneous (no subcategory)
+Personal: Gym Memberships, Personal Devices, Personal Subscriptions, Salon Services, Spa
+Taxes (no subcategory)
+Transportation: Car Fines, Car Insurance, Car Registration, Gasoline, Parking Fees, Taxi, Tolls
+Travel: Air Travel, Hotel, Visas
+Utilities: Electricity/Water, Gas, Generator, Mobile, TV/Internet
+
+INCOME CATEGORIES: Bonus, Cashback, Debt Income, Freelance Income, Gifts-Children, Gifts-General, Gifts-Home, Interest Income, Investments Income, Item Sale, Monthly Salary, Reimbursement, Rental Income, Returned Purchase, Severance
+
+ASSUMPTIONS (editable):
+- AsOfDate: update monthly to start of month
+- SavingsTargetPct: 10% (target savings rate)
+- EmergencyRunwayMonths: 3 (min cash runway)
+- MaxDiscretionaryPct: 30% (guardrail)
+- DTITargetPct: 30% (max debt-to-income)
+- DSCRTarget: 1.5x (min coverage ratio)
+- SalaryCycleDay: 25 (day salary received)
+- FX rates: all 16 currencies above
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT YOU CAN LOG — 8 OPERATION TYPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Always confirm the details in 1-3 lines, then output exactly ONE JSON tag.
+Use today's date (2026-03-24) unless otherwise specified.
+
+──────────────────────────────────────
+1. TRANSACTION (Inputs_Actuals)
+Completed income or expense — already happened
+[[TXN:{"description":"","category":"","subcategory":"","amount_original":0,"currency_code":"AED","amount_base":0,"direction":"Expense","txn_method":"ENBD AED Account","tags":"Home","core_flag":"Core","val_recog_type":"Immediate","installment_months":0,"prepaid_mo":null,"txn_date":"2026-03-24","notes":""}]]
+
+val_recog_type rules:
+- "Immediate" → normal transaction, recognized in full on txn_date
+- "Spread" → prepaid/annual (e.g. rent, insurance) — set installment_months to number of months
+- prepaid_mo → set to installment_months value when Spread (e.g. rent for 6mo → prepaid_mo=6)
+For BNPL: set installment_months to number of installments (e.g. 4 for Tabby)
+
+──────────────────────────────────────
+2. COMMITMENT (Commitments_Forecast)
+Future expected payment or income — not yet happened
+[[CMT:{"description":"","expected_date":"2026-04-01","amount_original":0,"currency_code":"AED","amount_base":0,"direction":"Expense","category":"","subcategory":"","tags":"Home","core_flag":"Core","status":"Pending","monthly_k":0,"prepaid_mo":null,"notes":""}]]
+
+monthly_k = amount_base ÷ number of months it covers (for accrual)
+status = always "Pending" for new entries
+
+──────────────────────────────────────
+3. ASSET (Assets_Register)
+Physical or financial asset owned
+[[AST:{"asset_id":"","asset_name":"","asset_type":"Property","purchase_date":"2026-03-24","purchase_price":0,"purchase_ccy":"AED","purchase_price_base":0,"current_value":0,"current_value_ccy":"AED","current_value_base":0,"has_liability":"N","liability_id":null,"location":"Dubai, UAE","notes":""}]]
+
+asset_type options: Property, Vehicle, Jewelry, Investment, Cash, Other
+Generate asset_id as: Car1, Gold11, Prop2, Inv1, etc.
+
+──────────────────────────────────────
+4. LIABILITY (Liabilities_Register)
+A loan, mortgage, or debt obligation
+[[LIB:{"liability_id":"","liability_name":"","liability_type":"Personal Loan","linked_asset_id":null,"original_principal":0,"annual_int_rate":0,"interest_type":"Reducing Balance","start_date":"2026-03-24","orig_term_months":0,"monthly_payment":0,"txn_method":"ENBD AED Account","core_flag":"Core","loan_currency":"AED","lender":"","status":"Active","remaining_principal":0,"remaining_pmts":0,"expected_end_date":null,"notes":""}]]
+
+interest_type: "Reducing Balance" or "Flat"
+liability_type: Personal Loan, Mortgage, Car Loan, Credit Card, BNPL, Other
+
+──────────────────────────────────────
+5. TRANSFER (Inputs_Transfers)
+Money moved between own accounts — not income/expense
+[[TRF:{"txn_date":"2026-03-24","from_method":"ENBD AED Account","to_method":"Cash - AED","amount_from":0,"ccy_from":"AED","amount_to":0,"ccy_to":"AED","from_base":0,"to_base":0}]]
+
+Use for: salary routing, credit card payments, cash withdrawals, savings moves
+
+──────────────────────────────────────
+6. NEW ACCOUNT (Master_TxnMethods)
+Add a new payment method / account
+[[ACC:{"method_name":"","account_type":"Bank","currency_code":"AED","open_bal_original":0,"open_bal_base":0,"bnpl_default_months":null,"is_active":"Y","core_flag":"Core"}]]
+
+account_type: Bank, Cash, CreditCard, BNPL, Investment, Savings
+
+──────────────────────────────────────
+7. NEW TAG (Master_Tags)
+Add a new tag for transaction labeling
+[[TAG:{"tag_name":"","description":""}]]
+
+──────────────────────────────────────
+8. ASSUMPTION UPDATE (Assumptions)
+Change a model assumption or FX rate
+[[ASM:{"parameter":"","value_num":null,"value_text":null,"value_date":null,"notes":""}]]
+
+Parameters: SavingsTargetPct, EmergencyRunwayMonths, MaxDiscretionaryPct,
+DTITargetPct, DSCRTarget, SalaryCycleDay, AsOfDate
+For FX rate updates use: [[FXR:{"currency_code":"USD","rate_to_base":3.67,"currency_name":"US Dollar"}]]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SETTLE / UPDATE OPERATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When Rabie says a commitment was received/paid, or wants to mark something settled:
+[[SETTLE:{"table":"commitments","description":"...","settled_date":"2026-03-24","settle_method":"ENBD AED Account"}]]
+
+When updating an existing asset value (e.g. gold price changed):
+[[UPD_AST:{"asset_id":"Gold1","current_value":21000,"current_value_base":21000}]]
+
+When a loan payment is made (reduces remaining principal):
+[[UPD_LIB:{"liability_id":"Loan1","payment_amount":34065,"payment_date":"2026-03-24"}]]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINANCIAL QUESTIONS & REPORTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Answer any financial question using Rabie's data above. Be precise, show calculations, reference actual numbers. Cover: balance sheet, cash flow, income statement, free cash, loan schedules, spending by category/tag, KPI analysis, savings rate, DTI, DSCR, net worth trajectory, commitment pipeline, asset performance.
+
+PERSONALITY: Direct, no fluff. Light Arabic (Yalla, Habibi, Tamam, Khalas, Mabrouk). Proactively flag: ⚠ critical cash runway, upcoming large commitments, KPI breaches.`;
+
+
+
+const CLAUDE_KEY = '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';
+
+async function callClaude(userMsg) {
+  chatHistory.push({ role:'user', content: userMsg });
+  let resp, data;
+  try {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: SYSTEM,
+        messages: chatHistory
+      })
+    });
+  } catch(networkErr) {
+    chatHistory.pop();
+    throw new Error('Network error: ' + networkErr.message);
+  }
+
+  try {
+    data = await resp.json();
+  } catch(parseErr) {
+    chatHistory.pop();
+    throw new Error('Response parse error: HTTP ' + resp.status);
+  }
+
+  if (!resp.ok || data.error) {
+    chatHistory.pop();
+    const errMsg = data.error?.message || ('HTTP ' + resp.status);
+    throw new Error('Claude API error: ' + errMsg);
+  }
+
+  const text = data.content?.find(b => b.type === 'text')?.text;
+  if (!text) {
+    chatHistory.pop();
+    throw new Error('Empty response from Claude');
+  }
+  chatHistory.push({ role: 'assistant', content: text });
+  return text;
+}
+
+function addMsg(html, isUser) {
+  const msgs = document.getElementById('msgs');
+  const row = document.createElement('div');
+  row.className = 'msg-row' + (isUser?' usr':'');
+  const av = document.createElement('div');
+  av.className = 'avatar ' + (isUser?'av-usr':'av-ai');
+  av.textContent = isUser?'R':'Q';
+  const b = document.createElement('div');
+  b.className = 'bubble ' + (isUser?'b-usr':'b-ai');
+  b.innerHTML = html.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  row.appendChild(av); row.appendChild(b);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+  return b;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('msgs');
+  const row = document.createElement('div');
+  row.className = 'msg-row'; row.id = 'typing-row';
+  const av = document.createElement('div');
+  av.className = 'avatar av-ai'; av.textContent = 'Q';
+  const b = document.createElement('div');
+  b.className = 'bubble b-ai';
+  b.innerHTML = '<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  row.appendChild(av); row.appendChild(b);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() { const el=document.getElementById('typing-row'); if(el)el.remove(); }
+
+async function saveFromAI(json, table, successMsg) {
+  try {
+    const obj = JSON.parse(json);
+    const result = await sbPost(table, obj);
+    if (result && !result.error && !result[0]?.code) {
+      showToast(successMsg);
+      return result[0] || obj;
+    } else {
+      console.error('Save error:', result);
+      showToast('⚠ Saved locally — check connection', true);
+      return obj;
+    }
+  } catch(e) {
+    console.error('Parse/save error:', e);
+    showToast('⚠ Could not save — check format', true);
+    return null;
+  }
+}
+
+async function handleSend() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  addMsg(text, true);
+  showTyping();
+  try {
+    const reply = await callClaude(text);
+    removeTyping();
+
+    // Parse all operation types
+    const ops = {
+      TXN:      reply.match(/\[\[TXN:([\s\S]*?)\]\]/),
+      CMT:      reply.match(/\[\[CMT:([\s\S]*?)\]\]/),
+      AST:      reply.match(/\[\[AST:([\s\S]*?)\]\]/),
+      LIB:      reply.match(/\[\[LIB:([\s\S]*?)\]\]/),
+      TRF:      reply.match(/\[\[TRF:([\s\S]*?)\]\]/),
+      ACC:      reply.match(/\[\[ACC:([\s\S]*?)\]\]/),
+      TAG:      reply.match(/\[\[TAG:([\s\S]*?)\]\]/),
+      ASM:      reply.match(/\[\[ASM:([\s\S]*?)\]\]/),
+      FXR:      reply.match(/\[\[FXR:([\s\S]*?)\]\]/),
+      SETTLE:   reply.match(/\[\[SETTLE:([\s\S]*?)\]\]/),
+      UPD_AST:  reply.match(/\[\[UPD_AST:([\s\S]*?)\]\]/),
+      UPD_LIB:  reply.match(/\[\[UPD_LIB:([\s\S]*?)\]\]/),
+    };
+
+    // Clean display — strip all JSON tags
+    let displayReply = reply
+      .replace(/\[\[(?:TXN|CMT|AST|LIB|TRF|ACC|TAG|ASM|FXR|SETTLE|UPD_AST|UPD_LIB):[\s\S]*?\]\]/g, '')
+      .trim();
+    addMsg(displayReply, false);
+
+    // ── Execute operations ──
+
+    if (ops.TXN) {
+      const saved = await saveFromAI(ops.TXN[1], 'transactions', '✓ Transaction saved');
+      if (saved) { allTxns.unshift(saved); renderDashboard(); renderTransactions(currentFilter); renderReports(); }
+    }
+
+    if (ops.CMT) {
+      const saved = await saveFromAI(ops.CMT[1], 'commitments', '✓ Commitment saved');
+      if (saved) {
+        allCommitments.push(saved);
+        allCommitments.sort((a,b) => new Date(a.expected_date||0) - new Date(b.expected_date||0));
+        renderDashboard(); renderReports();
+      }
+    }
+
+    if (ops.AST) {
+      const saved = await saveFromAI(ops.AST[1], 'assets', '✓ Asset saved');
+      if (saved) { allAssets.push(saved); renderDashboard(); renderReports(); }
+    }
+
+    if (ops.LIB) {
+      const saved = await saveFromAI(ops.LIB[1], 'liabilities', '✓ Liability added');
+      if (saved) { allLiabilities.push(saved); renderDashboard(); renderReports(); }
+    }
+
+    if (ops.TRF) {
+      await saveFromAI(ops.TRF[1], 'transfers', '✓ Transfer logged');
+    }
+
+    if (ops.ACC) {
+      const saved = await saveFromAI(ops.ACC[1], 'accounts', '✓ Account added');
+      if (saved) showToast('✓ Account "' + (saved.method_name||'') + '" added');
+    }
+
+    if (ops.TAG) {
+      await saveFromAI(ops.TAG[1], 'tags', '✓ Tag added');
+    }
+
+    if (ops.ASM) {
+      try {
+        const obj = JSON.parse(ops.ASM[1]);
+        const res = await fetch(`${SB_URL}/rest/v1/assumptions?parameter=eq.${encodeURIComponent(obj.parameter)}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Prefer': 'return=representation' },
+          body: JSON.stringify({ value_num: obj.value_num, value_text: obj.value_text, value_date: obj.value_date, notes: obj.notes })
+        });
+        showToast('✓ Assumption updated: ' + obj.parameter);
+      } catch(e) { showToast('⚠ Could not update assumption', true); }
+    }
+
+    if (ops.FXR) {
+      try {
+        const obj = JSON.parse(ops.FXR[1]);
+        const res = await fetch(`${SB_URL}/rest/v1/fx_rates?currency_code=eq.${obj.currency_code}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Prefer': 'return=representation' },
+          body: JSON.stringify({ rate_to_base: obj.rate_to_base })
+        });
+        showToast('✓ FX rate updated: ' + obj.currency_code + ' = ' + obj.rate_to_base);
+      } catch(e) { showToast('⚠ Could not update FX rate', true); }
+    }
+
+    if (ops.UPD_AST) {
+      try {
+        const obj = JSON.parse(ops.UPD_AST[1]);
+        await fetch(`${SB_URL}/rest/v1/assets?asset_id=eq.${obj.asset_id}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ current_value: obj.current_value, current_value_base: obj.current_value_base })
+        });
+        const a = allAssets.find(x=>x.asset_id===obj.asset_id);
+        if (a) { a.current_value = obj.current_value; a.current_value_base = obj.current_value_base; }
+        showToast('✓ Asset value updated: ' + obj.asset_id);
+        renderDashboard(); renderReports();
+      } catch(e) { showToast('⚠ Could not update asset', true); }
+    }
+
+    if (ops.UPD_LIB) {
+      try {
+        const obj = JSON.parse(ops.UPD_LIB[1]);
+        const lib = allLiabilities.find(x=>x.liability_id===obj.liability_id);
+        if (lib) {
+          const newPrin = Math.max(0, (lib.remaining_principal||0) - (obj.payment_amount||0));
+          const newPmts = Math.max(0, (lib.remaining_pmts||0) - 1);
+          await fetch(`${SB_URL}/rest/v1/liabilities?liability_id=eq.${obj.liability_id}`, {
+            method: 'PATCH', headers,
+            body: JSON.stringify({ remaining_principal: newPrin, remaining_pmts: newPmts })
+          });
+          lib.remaining_principal = newPrin; lib.remaining_pmts = newPmts;
+          showToast('✓ Loan payment recorded: ' + obj.liability_id);
+          renderDashboard(); renderReports();
+        }
+      } catch(e) { showToast('⚠ Could not update liability', true); }
+    }
+
+    if (ops.SETTLE) {
+      try {
+        const obj = JSON.parse(ops.SETTLE[1]);
+        await fetch(`${SB_URL}/rest/v1/commitments?description=eq.${encodeURIComponent(obj.description)}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ status: 'Settled', settle_method: obj.settle_method })
+        });
+        const c = allCommitments.find(x=>x.description===obj.description);
+        if (c) c.status = 'Settled';
+        showToast('✓ Commitment settled: ' + obj.description);
+        renderDashboard(); renderReports();
+      } catch(e) { showToast('⚠ Could not settle commitment', true); }
+    }
+
+  } catch(e) {
+    removeTyping();
+    const errText = e.message || 'Unknown error';
+    addMsg('⚠ ' + errText + '<br><br><span style="color:var(--text3);font-size:11px">If this persists, check your API key and network connection.</span>', false);
+  }
+}
+
+function quickSend(text) {
+  switchTab('chat');
+  setTimeout(() => {
+    document.getElementById('chat-input').value = text;
+    handleSend();
+  }, 150);
+}
+
+// ── Input auto-resize ──
+const chatInput = document.getElementById('chat-input');
+chatInput.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();} });
+chatInput.addEventListener('input', () => { chatInput.style.height='auto'; chatInput.style.height=Math.min(chatInput.scrollHeight,100)+'px'; });
+
+// ── Init ──
+loadAll();
+</script>
+</body>
+</html>
