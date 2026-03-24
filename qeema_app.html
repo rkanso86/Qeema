@@ -346,10 +346,35 @@
   .badge-a { background:rgba(255,179,71,0.15);color:var(--amber); }
   .badge-b { background:rgba(95,199,254,0.15);color:var(--teal); }
 
-  /* ── SEARCH BAR ── */
-  .search-bar { display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:9px 14px;margin-bottom:12px; }
-  .search-bar input { flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text); }
-  .search-bar input::placeholder { color:var(--text3); }
+  /* ── FILTER PANEL ── */
+  .filter-panel { position:absolute;bottom:0;left:0;right:0;background:var(--bg3);border-radius:24px 24px 0 0;border-top:1px solid var(--border2);z-index:180;transform:translateY(100%);transition:transform 0.28s cubic-bezier(.4,0,.2,1);max-height:80%;display:flex;flex-direction:column; }
+  .filter-panel.open { transform:translateY(0); }
+  .filter-panel-head { display:flex;justify-content:space-between;align-items:center;padding:16px 18px 12px;flex-shrink:0;border-bottom:1px solid var(--border); }
+  .filter-panel-title { font-size:15px;font-weight:700;color:var(--text); }
+  .filter-panel-body { overflow-y:auto;padding:14px 18px 24px;flex:1; }
+  .filter-panel-body::-webkit-scrollbar { display:none; }
+  .filter-section { margin-bottom:18px; }
+  .filter-section-label { font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px; }
+  .filter-chips { display:flex;flex-wrap:wrap;gap:6px; }
+  .fchip { background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-family:var(--font);color:var(--text2);cursor:pointer;transition:all 0.15s; }
+  .fchip.active { background:rgba(95,199,254,0.15);border-color:var(--teal);color:var(--teal);font-weight:600; }
+  .fchip:active { opacity:0.7; }
+  .filter-row-inputs { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .filter-input { width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-family:var(--font);font-size:13px;color:var(--text);outline:none; }
+  .filter-input:focus { border-color:var(--teal); }
+  .filter-apply { width:100%;background:var(--grad);border:none;border-radius:14px;padding:13px;font-family:var(--font);font-size:14px;font-weight:700;color:#1a2030;cursor:pointer;margin-top:6px; }
+  .filter-reset { width:100%;background:transparent;border:1px solid var(--border);border-radius:14px;padding:11px;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;margin-top:8px; }
+  .filter-overlay { position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:179;opacity:0;pointer-events:none;transition:opacity 0.25s;border-radius:48px; }
+  .filter-overlay.open { opacity:1;pointer-events:all; }
+  .active-filters { display:flex;gap:6px;overflow-x:auto;padding:0 16px 10px;flex-shrink:0; }
+  .active-filters::-webkit-scrollbar { display:none; }
+  .af-chip { display:flex;align-items:center;gap:4px;background:rgba(95,199,254,0.12);border:1px solid rgba(95,199,254,0.25);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--teal);white-space:nowrap;flex-shrink:0; }
+  .af-x { cursor:pointer;opacity:0.7;font-size:13px;line-height:1; }
+  .sort-btn { display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:12px;font-family:var(--font);color:var(--text2);cursor:pointer;white-space:nowrap; }
+  .sort-btn.active { border-color:var(--teal);color:var(--teal); }
+  .filter-btn { display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;font-family:var(--font);color:var(--text2);cursor:pointer;white-space:nowrap; }
+  .filter-btn.has-filters { border-color:var(--teal);color:var(--teal);background:rgba(95,199,254,0.08); }
+  .txn-count { font-size:11px;color:var(--text3);padding:0 18px 6px;flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -444,7 +469,66 @@
       <div class="mgmt-title">Commitments</div>
       <button class="mgmt-add" onclick="openDetail('commitment',null)">+</button>
     </div>
+    <!-- Commitments filter bar -->
+    <div style="padding:8px 16px 6px;display:flex;gap:8px;align-items:center;flex-shrink:0;border-bottom:1px solid var(--border)">
+      <div class="filter-btn" id="cmt-filter-btn" onclick="openFilterPanel('cmt')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Filter <span id="cmt-filter-count" style="display:none;background:var(--teal);color:#1a2030;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span>
+      </div>
+      <div class="sort-btn active" id="cmt-sort-date" onclick="setCmtSort('date')">↓ Date</div>
+      <div class="sort-btn" id="cmt-sort-amount" onclick="setCmtSort('amount')">↓ Amount</div>
+    </div>
+    <div class="active-filters" id="cmt-active-filters" style="display:none;padding:8px 16px 4px"></div>
     <div class="mgmt-body" id="mgmt-cmt-list"></div>
+
+    <!-- Commitments filter overlay + panel -->
+    <div class="filter-overlay" id="cmt-filter-overlay" onclick="closeFilterPanel('cmt')"></div>
+    <div class="filter-panel" id="cmt-filter-panel">
+      <div class="filter-panel-head">
+        <span class="filter-panel-title">Filter Commitments</span>
+        <span style="font-size:13px;color:var(--teal);cursor:pointer;font-weight:600" onclick="resetCmtFilters()">Reset</span>
+      </div>
+      <div class="filter-panel-body">
+        <div class="filter-section">
+          <div class="filter-section-label">Status</div>
+          <div class="filter-chips">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'cmt-status')">All</div>
+            <div class="fchip" data-val="Pending" onclick="toggleFChip(this,'cmt-status')">Pending</div>
+            <div class="fchip" data-val="Settled" onclick="toggleFChip(this,'cmt-status')">Settled</div>
+            <div class="fchip" data-val="Cancelled" onclick="toggleFChip(this,'cmt-status')">Cancelled</div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-section-label">Direction</div>
+          <div class="filter-chips">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'cmt-direction')">All</div>
+            <div class="fchip" data-val="Expense" onclick="toggleFChip(this,'cmt-direction')">Expense</div>
+            <div class="fchip" data-val="Income" onclick="toggleFChip(this,'cmt-direction')">Income</div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-section-label">Category</div>
+          <div class="filter-chips" id="cmt-fp-categories">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'cmt-category')">All</div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-section-label">Tag</div>
+          <div class="filter-chips" id="cmt-fp-tags">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'cmt-tag')">All</div>
+          </div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-section-label">Date Range</div>
+          <div class="filter-row-inputs">
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">From</div><input type="date" class="filter-input" id="cmt-fp-date-from"></div>
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">To</div><input type="date" class="filter-input" id="cmt-fp-date-to"></div>
+          </div>
+        </div>
+        <button class="filter-apply" onclick="applyCmtFilters();closeFilterPanel('cmt')">Apply Filters</button>
+        <button class="filter-reset" onclick="resetCmtFilters()">Reset All</button>
+      </div>
+    </div>
   </div>
 
   <!-- ASSETS MGMT -->
@@ -673,20 +757,27 @@
       <div style="font-size:20px;font-weight:700;color:var(--text);flex:1">Transactions</div>
       <div style="font-size:12px;color:var(--teal);font-weight:600" id="txn-period">2026</div>
     </div>
-    <div style="padding:0 16px 8px;flex-shrink:0">
+
+    <!-- Search + Filter/Sort bar -->
+    <div style="padding:0 16px 6px;flex-shrink:0">
       <div class="search-bar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg>
-        <input type="text" placeholder="Search transactions…" id="txn-search" oninput="filterTxnsSearch(this.value)">
+        <input type="text" placeholder="Search transactions…" id="txn-search" oninput="applyTxnFilters()">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="filter-btn" id="txn-filter-btn" onclick="openFilterPanel('txn')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+          Filter <span id="txn-filter-count" style="display:none;background:var(--teal);color:#1a2030;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span>
+        </div>
+        <div class="sort-btn active" id="sort-date" onclick="setTxnSort('date')">↓ Date</div>
+        <div class="sort-btn" id="sort-amount" onclick="setTxnSort('amount')">↓ Amount</div>
       </div>
     </div>
-    <div class="filter-row">
-      <div class="ftab active" onclick="filterTxns('all', this)">All</div>
-      <div class="ftab" onclick="filterTxns('Expense', this)">Expenses</div>
-      <div class="ftab" onclick="filterTxns('Income', this)">Income</div>
-      <div class="ftab" onclick="filterTxns('Jan', this)">January</div>
-      <div class="ftab" onclick="filterTxns('Feb', this)">February</div>
-      <div class="ftab" onclick="filterTxns('Mar', this)">March</div>
-    </div>
+
+    <!-- Active filter chips -->
+    <div class="active-filters" id="txn-active-filters" style="display:none"></div>
+    <div class="txn-count" id="txn-count-label"></div>
+
     <div class="scroll-area" style="padding-top:0">
       <div class="card" id="txn-list">
         <div style="color:var(--text3);font-size:12px">Loading transactions…</div>
@@ -702,6 +793,88 @@
           <div class="m-val" style="font-size:16px;color:var(--red)" id="txn-out">–</div>
           <div class="m-sub">AED</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Filter overlay -->
+    <div class="filter-overlay" id="txn-filter-overlay" onclick="closeFilterPanel('txn')"></div>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="txn-filter-panel">
+      <div class="filter-panel-head">
+        <span class="filter-panel-title">Filter Transactions</span>
+        <span style="font-size:13px;color:var(--teal);cursor:pointer;font-weight:600" onclick="resetTxnFilters()">Reset</span>
+      </div>
+      <div class="filter-panel-body">
+
+        <div class="filter-section">
+          <div class="filter-section-label">Direction</div>
+          <div class="filter-chips">
+            <div class="fchip active" data-filter="direction" data-val="" onclick="toggleFChip(this,'txn-direction')">All</div>
+            <div class="fchip" data-filter="direction" data-val="Expense" onclick="toggleFChip(this,'txn-direction')">Expense</div>
+            <div class="fchip" data-filter="direction" data-val="Income" onclick="toggleFChip(this,'txn-direction')">Income</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Category</div>
+          <div class="filter-chips" id="fp-categories">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'txn-category')">All</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Tag</div>
+          <div class="filter-chips" id="fp-tags">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'txn-tag')">All</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Payment Method</div>
+          <div class="filter-chips" id="fp-methods">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'txn-method')">All</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Currency</div>
+          <div class="filter-chips">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'txn-currency')">All</div>
+            <div class="fchip" data-val="AED" onclick="toggleFChip(this,'txn-currency')">AED</div>
+            <div class="fchip" data-val="USD" onclick="toggleFChip(this,'txn-currency')">USD</div>
+            <div class="fchip" data-val="CAD" onclick="toggleFChip(this,'txn-currency')">CAD</div>
+            <div class="fchip" data-val="EUR" onclick="toggleFChip(this,'txn-currency')">EUR</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Core Flag</div>
+          <div class="filter-chips">
+            <div class="fchip active" data-val="" onclick="toggleFChip(this,'txn-core')">All</div>
+            <div class="fchip" data-val="Core" onclick="toggleFChip(this,'txn-core')">Core</div>
+            <div class="fchip" data-val="Non-Core" onclick="toggleFChip(this,'txn-core')">Non-Core</div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Date Range</div>
+          <div class="filter-row-inputs">
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">From</div><input type="date" class="filter-input" id="fp-date-from"></div>
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">To</div><input type="date" class="filter-input" id="fp-date-to"></div>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <div class="filter-section-label">Amount Range (AED)</div>
+          <div class="filter-row-inputs">
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Min</div><input type="number" class="filter-input" id="fp-amt-min" placeholder="0"></div>
+            <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Max</div><input type="number" class="filter-input" id="fp-amt-max" placeholder="Any"></div>
+          </div>
+        </div>
+
+        <button class="filter-apply" onclick="applyTxnFilters();closeFilterPanel('txn')">Apply Filters</button>
+        <button class="filter-reset" onclick="resetTxnFilters()">Reset All</button>
       </div>
     </div>
   </div>
@@ -977,21 +1150,285 @@ function renderDashboard() {
 }
 
 // ── Transactions ──
-function renderTransactions(filter='all') {
+// ══════════════════════════════════════════════
+// FILTER & SORT ENGINE
+// ══════════════════════════════════════════════
+
+// ── State ──
+const txnFilters = { direction:'', category:'', tag:'', method:'', currency:'', core:'', dateFrom:'', dateTo:'', amtMin:'', amtMax:'' };
+const cmtFilters = { status:'', direction:'', category:'', tag:'', dateFrom:'', dateTo:'' };
+let txnSort = 'date'; // 'date' | 'amount'
+let cmtSort = 'date';
+
+// ── Filter panel open/close ──
+function openFilterPanel(type) {
+  if (type === 'txn') {
+    populateTxnFilterChips();
+    document.getElementById('txn-filter-panel').classList.add('open');
+    document.getElementById('txn-filter-overlay').classList.add('open');
+    // Restore current filter state to UI
+    document.getElementById('fp-date-from').value = txnFilters.dateFrom;
+    document.getElementById('fp-date-to').value = txnFilters.dateTo;
+    document.getElementById('fp-amt-min').value = txnFilters.amtMin;
+    document.getElementById('fp-amt-max').value = txnFilters.amtMax;
+  } else {
+    populateCmtFilterChips();
+    document.getElementById('cmt-filter-panel').classList.add('open');
+    document.getElementById('cmt-filter-overlay').classList.add('open');
+    document.getElementById('cmt-fp-date-from').value = cmtFilters.dateFrom;
+    document.getElementById('cmt-fp-date-to').value = cmtFilters.dateTo;
+  }
+}
+function closeFilterPanel(type) {
+  document.getElementById(type+'-filter-panel').classList.remove('open');
+  document.getElementById(type+'-filter-overlay').classList.remove('open');
+}
+
+// ── Populate dynamic chips from loaded data ──
+function populateTxnFilterChips() {
+  const cats = [...new Set(allTxns.map(t=>t.category).filter(Boolean))].sort();
+  const tags = [...new Set(allTxns.map(t=>t.tags).filter(Boolean))].sort();
+  const methods = [...new Set(allTxns.map(t=>t.txn_method).filter(Boolean))].sort();
+
+  populateChips('fp-categories', cats, 'txn-category', txnFilters.category);
+  populateChips('fp-tags', tags, 'txn-tag', txnFilters.tag);
+  populateChips('fp-methods', methods, 'txn-method', txnFilters.method);
+}
+function populateCmtFilterChips() {
+  const cats = [...new Set(allCommitments.map(c=>c.category).filter(Boolean))].sort();
+  const tags = [...new Set(allCommitments.map(c=>c.tags).filter(Boolean))].sort();
+  populateChips('cmt-fp-categories', cats, 'cmt-category', cmtFilters.category);
+  populateChips('cmt-fp-tags', tags, 'cmt-tag', cmtFilters.tag);
+}
+function populateChips(containerId, values, filterKey, currentVal) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="fchip ${!currentVal?'active':''}" data-val="" onclick="toggleFChip(this,'${filterKey}')"">All</div>`;
+  values.forEach(v => {
+    const chip = document.createElement('div');
+    chip.className = 'fchip' + (v === currentVal ? ' active' : '');
+    chip.dataset.val = v;
+    chip.setAttribute('onclick', `toggleFChip(this,'${filterKey}')`);
+    chip.textContent = v;
+    el.appendChild(chip);
+  });
+}
+
+// ── Chip toggle — single select per group ──
+function toggleFChip(el, group) {
+  // Deactivate siblings in same group
+  el.parentElement.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Apply transaction filters ──
+function applyTxnFilters() {
+  // Read chip selections
+  const getChipVal = (containerId) => {
+    const el = document.getElementById(containerId);
+    if (!el) return '';
+    const active = el.querySelector('.fchip.active');
+    return active ? active.dataset.val || '' : '';
+  };
+  const getDirectChipVal = (selector) => {
+    const active = document.querySelector(selector + ' .fchip.active');
+    return active ? active.dataset.val || '' : '';
+  };
+
+  txnFilters.direction = getDirectChipVal('[data-filter="direction"]') ||
+    document.querySelector('.fchip.active[data-filter="direction"]')?.dataset.val || '';
+  txnFilters.category  = getChipVal('fp-categories');
+  txnFilters.tag       = getChipVal('fp-tags');
+  txnFilters.method    = getChipVal('fp-methods');
+  txnFilters.currency  = getDirectChipVal('[onclick*="txn-currency"]') || (() => {
+    const chips = document.querySelectorAll('[onclick*="txn-currency"]');
+    for (const c of chips) if (c.classList.contains('active')) return c.dataset.val||'';
+    return '';
+  })();
+  txnFilters.core      = (() => {
+    const chips = document.querySelectorAll('[onclick*="txn-core"]');
+    for (const c of chips) if (c.classList.contains('active')) return c.dataset.val||'';
+    return '';
+  })();
+  txnFilters.dateFrom  = document.getElementById('fp-date-from')?.value || '';
+  txnFilters.dateTo    = document.getElementById('fp-date-to')?.value || '';
+  txnFilters.amtMin    = document.getElementById('fp-amt-min')?.value || '';
+  txnFilters.amtMax    = document.getElementById('fp-amt-max')?.value || '';
+
+  renderFilteredTxns();
+}
+
+function renderFilteredTxns() {
+  const search = (document.getElementById('txn-search')?.value || '').toLowerCase();
   let txns = [...allTxns];
-  if (filter === 'Expense' || filter === 'Income') txns = txns.filter(t=>t.direction===filter);
-  if (filter === 'Jan') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-01'));
-  if (filter === 'Feb') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-02'));
-  if (filter === 'Mar') txns = txns.filter(t=>t.txn_date&&t.txn_date.startsWith('2026-03'));
+
+  if (txnFilters.direction) txns = txns.filter(t => t.direction === txnFilters.direction);
+  if (txnFilters.category)  txns = txns.filter(t => t.category === txnFilters.category);
+  if (txnFilters.tag)       txns = txns.filter(t => t.tags === txnFilters.tag);
+  if (txnFilters.method)    txns = txns.filter(t => t.txn_method === txnFilters.method);
+  if (txnFilters.currency)  txns = txns.filter(t => t.currency_code === txnFilters.currency);
+  if (txnFilters.core)      txns = txns.filter(t => t.core_flag === txnFilters.core);
+  if (txnFilters.dateFrom)  txns = txns.filter(t => t.txn_date >= txnFilters.dateFrom);
+  if (txnFilters.dateTo)    txns = txns.filter(t => t.txn_date <= txnFilters.dateTo);
+  if (txnFilters.amtMin)    txns = txns.filter(t => (t.amount_base||0) >= parseFloat(txnFilters.amtMin));
+  if (txnFilters.amtMax)    txns = txns.filter(t => (t.amount_base||0) <= parseFloat(txnFilters.amtMax));
+  if (search)               txns = txns.filter(t =>
+    (t.description||'').toLowerCase().includes(search) ||
+    (t.category||'').toLowerCase().includes(search) ||
+    (t.tags||'').toLowerCase().includes(search) ||
+    (t.txn_method||'').toLowerCase().includes(search)
+  );
+
+  // Sort
+  if (txnSort === 'date') txns.sort((a,b) => (b.txn_date||'').localeCompare(a.txn_date||''));
+  else txns.sort((a,b) => (b.amount_base||0) - (a.amount_base||0));
+
+  // Update active filter chips display
+  updateActiveFilters('txn');
+  document.getElementById('txn-count-label').textContent = `${txns.length} transaction${txns.length!==1?'s':''}`;
   renderTxnList(txns);
 }
 
-function filterTxns(filter, el) {
-  document.querySelectorAll('.ftab').forEach(f=>f.classList.remove('active'));
-  el.classList.add('active');
-  currentFilter = filter;
-  renderTransactions(filter);
+function updateActiveFilters(type) {
+  const filters = type === 'txn' ? txnFilters : cmtFilters;
+  const container = document.getElementById(type+'-active-filters');
+  const countEl = document.getElementById(type+'-filter-count');
+  const btnEl = document.getElementById(type+'-filter-btn');
+
+  const active = Object.entries(filters).filter(([k,v]) => v !== '');
+  container.style.display = active.length ? 'flex' : 'none';
+  countEl.style.display = active.length ? 'inline' : 'none';
+  countEl.textContent = active.length;
+  if (btnEl) btnEl.classList.toggle('has-filters', active.length > 0);
+
+  const labels = { direction:'Dir', category:'Cat', tag:'Tag', method:'Method',
+    currency:'Ccy', core:'Core', dateFrom:'From', dateTo:'To',
+    amtMin:'Min', amtMax:'Max', status:'Status' };
+
+  container.innerHTML = active.map(([k,v]) =>
+    `<div class="af-chip">${labels[k]||k}: ${v} <span class="af-x" onclick="clearFilter('${type}','${k}')">×</span></div>`
+  ).join('');
 }
+
+function clearFilter(type, key) {
+  if (type === 'txn') { txnFilters[key] = ''; renderFilteredTxns(); }
+  else { cmtFilters[key] = ''; renderFilteredCmts(); }
+}
+
+function resetTxnFilters() {
+  Object.keys(txnFilters).forEach(k => txnFilters[k] = '');
+  document.getElementById('fp-date-from').value = '';
+  document.getElementById('fp-date-to').value = '';
+  document.getElementById('fp-amt-min').value = '';
+  document.getElementById('fp-amt-max').value = '';
+  document.getElementById('txn-search').value = '';
+  // Reset all chips to All
+  document.querySelectorAll('#txn-filter-panel .fchip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#txn-filter-panel .filter-chips').forEach(group => {
+    const first = group.querySelector('.fchip');
+    if (first) first.classList.add('active');
+  });
+  renderFilteredTxns();
+}
+
+// ── Sort ──
+function setTxnSort(by) {
+  txnSort = by;
+  document.getElementById('sort-date').classList.toggle('active', by === 'date');
+  document.getElementById('sort-amount').classList.toggle('active', by === 'amount');
+  renderFilteredTxns();
+}
+function setCmtSort(by) {
+  cmtSort = by;
+  document.getElementById('cmt-sort-date').classList.toggle('active', by === 'date');
+  document.getElementById('cmt-sort-amount').classList.toggle('active', by === 'amount');
+  renderFilteredCmts();
+}
+
+// ── Commitments filter ──
+function applyCmtFilters() {
+  cmtFilters.status    = (() => { const c = document.querySelector('[onclick*="cmt-status"].fchip.active'); return c?.dataset.val||''; })();
+  cmtFilters.direction = (() => { const c = document.querySelector('[onclick*="cmt-direction"].fchip.active'); return c?.dataset.val||''; })();
+  cmtFilters.category  = document.querySelector('#cmt-fp-categories .fchip.active')?.dataset.val || '';
+  cmtFilters.tag       = document.querySelector('#cmt-fp-tags .fchip.active')?.dataset.val || '';
+  cmtFilters.dateFrom  = document.getElementById('cmt-fp-date-from')?.value || '';
+  cmtFilters.dateTo    = document.getElementById('cmt-fp-date-to')?.value || '';
+  renderFilteredCmts();
+}
+
+function renderFilteredCmts() {
+  let cmts = [...allCommitments];
+  if (cmtFilters.status)    cmts = cmts.filter(c => c.status === cmtFilters.status);
+  if (cmtFilters.direction) cmts = cmts.filter(c => c.direction === cmtFilters.direction);
+  if (cmtFilters.category)  cmts = cmts.filter(c => c.category === cmtFilters.category);
+  if (cmtFilters.tag)       cmts = cmts.filter(c => c.tags === cmtFilters.tag);
+  if (cmtFilters.dateFrom)  cmts = cmts.filter(c => (c.expected_date||'') >= cmtFilters.dateFrom);
+  if (cmtFilters.dateTo)    cmts = cmts.filter(c => (c.expected_date||'') <= cmtFilters.dateTo);
+
+  if (cmtSort === 'date')   cmts.sort((a,b) => (a.expected_date||'').localeCompare(b.expected_date||''));
+  else                      cmts.sort((a,b) => (b.amount_base||0) - (a.amount_base||0));
+
+  updateActiveFilters('cmt');
+  renderCmtList(document.getElementById('mgmt-cmt-list'), cmts);
+}
+
+function resetCmtFilters() {
+  Object.keys(cmtFilters).forEach(k => cmtFilters[k] = '');
+  document.getElementById('cmt-fp-date-from').value = '';
+  document.getElementById('cmt-fp-date-to').value = '';
+  document.querySelectorAll('#cmt-filter-panel .fchip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#cmt-filter-panel .filter-chips').forEach(group => {
+    const first = group.querySelector('.fchip');
+    if (first) first.classList.add('active');
+  });
+  renderFilteredCmts();
+}
+
+// ── Commitments list renderer (extracted for reuse) ──
+function renderCmtList(list, cmts) {
+  list.innerHTML = '';
+  if (!cmts.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No commitments match filters</div>';
+    return;
+  }
+  const byStatus = {};
+  cmts.forEach(c => {
+    const s = c.status || 'Pending';
+    if (!byStatus[s]) byStatus[s] = [];
+    byStatus[s].push(c);
+  });
+  ['Pending','Settled','Cancelled'].forEach(status => {
+    if (!byStatus[status]?.length) return;
+    const sec = document.createElement('div');
+    sec.innerHTML = `<div class="section-label">${status} (${byStatus[status].length})</div>`;
+    const card = document.createElement('div');
+    card.className = 'card';
+    byStatus[status].forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.onclick = () => openDetail('commitment', c);
+      item.innerHTML = `
+        <div class="list-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div>
+        <div class="list-info">
+          <div class="list-name">${c.description}</div>
+          <div class="list-sub">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''} · ${c.tags||''}</div>
+        </div>
+        <div class="list-right">
+          <div class="list-val ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div>
+          <div class="list-date"><span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div>
+        </div>
+        <span class="list-arrow">›</span>`;
+      card.appendChild(item);
+    });
+    sec.appendChild(card);
+    list.appendChild(sec);
+  });
+}
+
+// ── Legacy compat ──
+function renderTransactions(filter='all') { renderFilteredTxns(); }
+function filterTxns(filter, el) { renderFilteredTxns(); }
+function filterTxnsSearch(q) { renderFilteredTxns(); }
 
 // ── Reports ──
 function renderReports() {
@@ -1793,37 +2230,7 @@ function closeMgmt(type) {
 
 async function renderMgmt(type) {
   if (type === 'commitments') {
-    const list = document.getElementById('mgmt-cmt-list');
-    const data = await sbGet('commitments', 'order=expected_date.asc');
-    list.innerHTML = '';
-    const byStatus = { Pending: [], Settled: [], Cancelled: [] };
-    data.forEach(c => { (byStatus[c.status] || byStatus.Pending).push(c); });
-    ['Pending', 'Settled'].forEach(status => {
-      if (!byStatus[status].length) return;
-      const sec = document.createElement('div');
-      sec.innerHTML = `<div class="section-label">${status}</div>`;
-      const card = document.createElement('div');
-      card.className = 'card';
-      byStatus[status].forEach(c => {
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        item.onclick = () => openDetail('commitment', c);
-        item.innerHTML = `
-          <div class="list-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div>
-          <div class="list-info">
-            <div class="list-name">${c.description}</div>
-            <div class="list-sub">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''}</div>
-          </div>
-          <div class="list-right">
-            <div class="list-val ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div>
-            <div class="list-date"><span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div>
-          </div>
-          <span class="list-arrow">›</span>`;
-        card.appendChild(item);
-      });
-      sec.appendChild(card);
-      list.appendChild(sec);
-    });
+    renderFilteredCmts();
   }
 
   else if (type === 'assets') {
@@ -2493,16 +2900,6 @@ function openTxnDetail(idx) {
 }
 
 // ── Search transactions ──
-function filterTxnsSearch(q) {
-  const lower = q.toLowerCase();
-  const filtered = lower ? allTxns.filter(t =>
-    t.description?.toLowerCase().includes(lower) ||
-    t.category?.toLowerCase().includes(lower) ||
-    t.tags?.toLowerCase().includes(lower)
-  ) : allTxns;
-  renderTxnList(filtered);
-}
-
 function renderTxnList(txns) {
   currentTxnList = txns;
   const totalIn  = txns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
