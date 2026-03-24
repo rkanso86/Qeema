@@ -471,6 +471,17 @@
     <div class="mgmt-body" id="mgmt-lib-list"></div>
   </div>
 
+  <!-- LOAN SCHEDULE SCREEN -->
+  <div class="mgmt-screen" id="mgmt-loan-schedule">
+    <div class="mgmt-header">
+      <div class="mgmt-back" onclick="closeMgmt('loan-schedule');openMgmt('liabilities')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="#8ba3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="mgmt-title" id="schedule-title">Payment Schedule</div>
+    </div>
+    <div class="mgmt-body" id="mgmt-schedule-list"></div>
+  </div>
+
   <!-- ACCOUNTS MGMT -->
   <div class="mgmt-screen" id="mgmt-accounts">
     <div class="mgmt-header">
@@ -1764,34 +1775,62 @@ async function renderMgmt(type) {
     const list = document.getElementById('mgmt-lib-list');
     const data = await sbGet('liabilities', 'order=status.asc');
     list.innerHTML = '';
-    const card = document.createElement('div');
-    card.className = 'card';
     const total = data.filter(l=>l.status==='Active').reduce((s,l) => {
       return s + (l.loan_currency==='USD' ? (l.remaining_principal||0)*3.67 : (l.remaining_principal||0));
     }, 0);
-    const totDiv = document.createElement('div');
-    totDiv.style.cssText = 'display:flex;justify-content:space-between;padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px';
-    totDiv.innerHTML = `<span style="font-size:12px;color:var(--text3)">Total Remaining</span><span style="font-size:14px;font-weight:700;color:var(--red)">AED ${fmtFull(total)}</span>`;
-    card.appendChild(totDiv);
+    // Summary card
+    const summary = document.createElement('div');
+    summary.className = 'card';
+    summary.style.marginBottom = '12px';
+    const monthlyTotal = data.filter(l=>l.status==='Active').reduce((s,l)=>s+(l.monthly_payment||0),0);
+    summary.innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <div><div style="font-size:11px;color:var(--text3)">Total Remaining</div><div style="font-size:18px;font-weight:700;color:var(--red)">AED ${fmtFull(total)}</div></div>
+        <div style="text-align:right"><div style="font-size:11px;color:var(--text3)">Monthly Payments</div><div style="font-size:18px;font-weight:700;color:var(--amber)">AED ${fmtFull(monthlyTotal)}</div></div>
+      </div>`;
+    list.appendChild(summary);
+
     data.forEach(l => {
-      const item = document.createElement('div');
-      item.className = 'list-item';
-      item.onclick = () => openDetail('liability', l);
+      const lCard = document.createElement('div');
+      lCard.className = 'card';
+      lCard.style.marginBottom = '10px';
       const remaining = l.loan_currency==='USD' ? (l.remaining_principal||0)*3.67 : (l.remaining_principal||0);
-      item.innerHTML = `
-        <div class="list-ico" style="background:rgba(255,107,107,0.10)">🏦</div>
-        <div class="list-info">
-          <div class="list-name">${l.liability_name}</div>
-          <div class="list-sub">${l.interest_type||''} · ${l.annual_int_rate?(l.annual_int_rate*100).toFixed(2)+'%':'0%'} · ${l.remaining_pmts||0} pmts</div>
+      const origBase = l.loan_currency==='USD' ? (l.original_principal||0)*3.67 : (l.original_principal||0);
+      const paidPct = origBase > 0 ? Math.min(100, ((origBase - remaining) / origBase) * 100) : 0;
+      lCard.innerHTML = `
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(255,107,107,0.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏦</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${l.liability_name}</div>
+            <div style="font-size:11px;color:var(--text3)">${l.interest_type||''} · ${l.annual_int_rate?(l.annual_int_rate*100).toFixed(2)+'%':'0%'} · ${l.lender||''}</div>
+          </div>
         </div>
-        <div class="list-right">
-          <div class="list-val" style="color:var(--red)">${fmtFull(remaining)}</div>
-          <div class="list-date">${l.loan_currency} remaining</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--card2);border-radius:10px;padding:10px">
+            <div style="font-size:10px;color:var(--text3)">Remaining</div>
+            <div style="font-size:14px;font-weight:700;color:var(--red)">${fmtFull(remaining)}</div>
+            <div style="font-size:10px;color:var(--text3)">${l.loan_currency}</div>
+          </div>
+          <div style="background:var(--card2);border-radius:10px;padding:10px">
+            <div style="font-size:10px;color:var(--text3)">Monthly Payment</div>
+            <div style="font-size:14px;font-weight:700;color:var(--amber)">${fmtFull(l.monthly_payment||0)}</div>
+            <div style="font-size:10px;color:var(--text3)">${l.remaining_pmts||0} pmts left</div>
+          </div>
         </div>
-        <span class="list-arrow">›</span>`;
-      card.appendChild(item);
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">
+            <span>Paid off</span><span>${paidPct.toFixed(1)}%</span>
+          </div>
+          <div style="background:var(--card2);border-radius:6px;height:6px">
+            <div style="height:6px;border-radius:6px;background:linear-gradient(90deg,#66EAB9,#5FC7FE);width:${paidPct.toFixed(1)}%"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="openDetail('liability',${JSON.stringify(l).replace(/"/g,'&quot;')})" style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--text2);cursor:pointer">✏ Edit</button>
+          <button onclick="openLoanSchedule('${l.liability_id}','${l.liability_name}')" style="flex:1;background:rgba(95,199,254,0.10);border:1px solid rgba(95,199,254,0.2);border-radius:10px;padding:8px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--teal);cursor:pointer">📅 Schedule</button>
+        </div>`;
+      list.appendChild(lCard);
     });
-    list.appendChild(card);
   }
 
   else if (type === 'accounts') {
@@ -1904,6 +1943,86 @@ async function renderMgmt(type) {
   }
 }
 
+// ── Loan Schedule ──
+async function openLoanSchedule(liabilityId, liabilityName) {
+  document.getElementById('schedule-title').textContent = liabilityName;
+  openMgmt('loan-schedule');
+  const list = document.getElementById('mgmt-schedule-list');
+  list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:20px 0">Loading schedule…</div>';
+
+  const data = await sbGet('loan_schedule', `liability_id=eq.${liabilityId}&order=payment_no.asc`);
+
+  if (!data || !data.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">No schedule found for this loan.<br><br>Run the seed_loan_schedule.sql in Supabase to load it.</div>';
+    return;
+  }
+
+  const pending = data.filter(p=>p.status==='Pending');
+  const settled = data.filter(p=>p.status==='Settled');
+  const totalRemaining = pending.reduce((s,p)=>s+(p.exp_amt_base||p.expected_amt||0),0);
+  const totalPaid = settled.reduce((s,p)=>s+(p.actual_amt||p.expected_amt||0),0);
+
+  list.innerHTML = '';
+
+  // Summary
+  const sum = document.createElement('div');
+  sum.className = 'card';
+  sum.style.marginBottom = '12px';
+  sum.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div style="background:var(--card2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--text3)">Total Pmts</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${data.length}</div>
+      </div>
+      <div style="background:var(--card2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--text3)">Settled</div>
+        <div style="font-size:16px;font-weight:700;color:var(--green)">${settled.length}</div>
+      </div>
+      <div style="background:var(--card2);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--text3)">Pending</div>
+        <div style="font-size:16px;font-weight:700;color:var(--amber)">${pending.length}</div>
+      </div>
+    </div>`;
+  list.appendChild(sum);
+
+  // Schedule table
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.padding = '14px 12px';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'display:grid;grid-template-columns:32px 1fr 80px 70px 60px;gap:6px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:4px';
+  hdr.innerHTML = `
+    <span style="font-size:10px;color:var(--text3)">#</span>
+    <span style="font-size:10px;color:var(--text3)">Due Date</span>
+    <span style="font-size:10px;color:var(--text3);text-align:right">Amount</span>
+    <span style="font-size:10px;color:var(--text3);text-align:right">Principal</span>
+    <span style="font-size:10px;color:var(--text3);text-align:right">Status</span>`;
+  card.appendChild(hdr);
+
+  data.forEach(p => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:32px 1fr 80px 70px 60px;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center';
+    const isSettled = p.status === 'Settled';
+    const amt = p.exp_amt_base || p.expected_amt || 0;
+    const prin = p.exp_prin_base || p.expected_prin || 0;
+    row.innerHTML = `
+      <span style="font-size:11px;color:var(--text3);font-weight:500">${p.payment_no}</span>
+      <span style="font-size:12px;color:${isSettled?'var(--text3)':'var(--text)'}">${p.due_date?fmtDate(p.due_date):'-'}</span>
+      <span style="font-size:12px;font-weight:600;color:${isSettled?'var(--text3)':'var(--text)'};text-align:right">${fmtFull(amt)}</span>
+      <span style="font-size:11px;color:var(--text3);text-align:right">${fmtFull(prin)}</span>
+      <span style="text-align:right"><span class="badge ${isSettled?'badge-g':'badge-a'}" style="font-size:9px">${isSettled?'✓':'Pend'}</span></span>`;
+    card.appendChild(row);
+  });
+
+  // Remove last border
+  const lastRow = card.lastElementChild;
+  if (lastRow) lastRow.style.borderBottom = 'none';
+
+  list.appendChild(card);
+}
+
 async function saveAssumption(input) {
   const param = input.dataset.param;
   const val = parseFloat(input.value) || input.value;
@@ -1973,26 +2092,55 @@ function field(label, id, value, type='text', options=null) {
 }
 function fv(id) { const el = document.getElementById('df-'+id); return el ? el.value : ''; }
 
-function renderTxnDetail(t, body, isNew) {
+async function renderTxnDetail(t, body, isNew) {
   const dirs = ['Expense','Income'];
-  const methods = ['ENBD AED Account','EI AED Account','WIO AED Account','WIO Credit Card','Tabby Card','Tabby Pay Later','LBC CAD Credit Card','Cash - AED','Cash - USD','Splitwise Account','Nour Account'];
-  const ccys = ['AED','USD','EUR','GBP','CAD','SAR'];
-  const tags = ['Home','Rabie','Nour','Kids','Lilia','Nawwar','Maid','Parents','Insurance','Lebanon Apartment','Other','Jana'];
-  const recogs = ['Immediate','Spread','Deferred'];
+  const ccys = ['AED','USD','EUR','GBP','CAD','SAR','LBP'];
+  const coreFlags = ['Core','Non-Core'];
+
+  // Load methods dynamically from Supabase
+  let methods = ['ENBD AED Account','EI AED Account','WIO AED Account','WIO Credit Card','Tabby Card','Tabby Pay Later','LBC CAD Credit Card','Cash - AED','Cash - USD','Splitwise Account','Nour Account'];
+  try {
+    const accs = await sbGet('accounts', 'is_active=eq.Y&order=method_name.asc&select=method_name');
+    if (accs && accs.length) methods = accs.map(a => a.method_name);
+  } catch(e) {}
+
+  // Load tags dynamically
+  let tags = ['Home','Rabie','Nour','Kids','Lilia','Nawwar','Maid','Parents','Insurance','Lebanon Apartment','Other','Jana'];
+  try {
+    const tagData = await sbGet('tags','order=tag_name.asc&select=tag_name');
+    if (tagData && tagData.length) tags = tagData.map(t => t.tag_name);
+  } catch(e) {}
+
+  // Load categories dynamically
+  let categories = [];
+  try {
+    const catData = await sbGet('categories','order=category.asc&select=category,subcategory,direction');
+    if (catData && catData.length) categories = catData;
+  } catch(e) {}
+  const expCats = [...new Set(categories.filter(c=>c.direction==='Expense').map(c=>c.category))];
+  const incCats = [...new Set(categories.filter(c=>c.direction==='Income').map(c=>c.category))];
+  const allCats = [...new Set(categories.map(c=>c.category))].sort();
+
+  // Auto-calc val_recog_type (not shown to user)
+  // Spread: Housing/Rent, Insurance, annual fees. Immediate: everything else.
+  const spreadCats = ['Housing'];
+
   body.innerHTML = `
     ${field('Description','description', t?.description)}
-    ${field('Date','txn_date', t?.txn_date, 'date')}
-    ${field('Direction','direction', t?.direction, 'text', dirs)}
-    ${field('Category','category', t?.category)}
+    ${field('Date','txn_date', t?.txn_date||new Date().toISOString().split('T')[0], 'date')}
+    ${field('Direction','direction', t?.direction||'Expense', 'text', dirs)}
+    ${field('Category','category', t?.category,'text', allCats.length ? allCats : undefined)}
     ${field('Subcategory','subcategory', t?.subcategory)}
     ${field('Amount (Original)','amount_original', t?.amount_original, 'number')}
     ${field('Currency','currency_code', t?.currency_code||'AED','text',ccys)}
     ${field('Amount (AED)','amount_base', t?.amount_base, 'number')}
-    ${field('Method','txn_method', t?.txn_method,'text',methods)}
+    ${field('Payment Method','txn_method', t?.txn_method,'text',methods)}
     ${field('Tags','tags', t?.tags,'text',tags)}
-    ${field('Core Flag','core_flag', t?.core_flag||'Core','text',['Core','Non-Core'])}
-    ${field('Recognition','val_recog_type', t?.val_recog_type||'Immediate','text',recogs)}
+    ${field('Core Flag','core_flag', t?.core_flag||'Core','text',coreFlags)}
     ${field('Notes','notes', t?.notes)}
+    <div style="background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:var(--text3)">
+      ℹ Recognition type is auto-calculated (Spread for annual/prepaid, Immediate for all others)
+    </div>
     <button class="save-btn" onclick="saveTxnDetail(${t?.id||'null'})">Save Transaction</button>
     ${!isNew ? `<button class="delete-btn" onclick="deleteItem('transactions','id',${t?.id})">Delete Transaction</button>` : ''}`;
 }
@@ -2090,12 +2238,19 @@ function renderTagDetail(t, body, isNew) {
 
 // ── Save handlers ──
 async function saveTxnDetail(id) {
+  const cat = fv('category');
+  const installMonths = parseInt(fv('installment_months'))||0;
+  // Auto-calculate recognition type
+  const spreadCategories = ['Housing','Insurance'];
+  const valRecogType = spreadCategories.includes(cat) ? 'Spread' : 'Immediate';
+
   const obj = {
     description: fv('description'), txn_date: fv('txn_date'), direction: fv('direction'),
-    category: fv('category'), subcategory: fv('subcategory') || null,
+    category: cat, subcategory: fv('subcategory') || null,
     amount_original: parseFloat(fv('amount_original'))||0, currency_code: fv('currency_code'),
     amount_base: parseFloat(fv('amount_base'))||0, txn_method: fv('txn_method'),
-    tags: fv('tags'), core_flag: fv('core_flag'), val_recog_type: fv('val_recog_type'),
+    tags: fv('tags'), core_flag: fv('core_flag'),
+    val_recog_type: valRecogType,
     notes: fv('notes')||null
   };
   if (id && id !== 'null') {
