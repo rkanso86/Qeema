@@ -331,6 +331,17 @@ body{display:flex;justify-content:center;align-items:center}
 .export-btn{width:100%;background:rgba(102,234,185,0.10);border:1px solid rgba(102,234,185,0.25);border-radius:14px;padding:13px;font-family:var(--font);font-size:14px;font-weight:600;color:var(--green);cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
 
 /* ── REPORTS ── */
+  /* -- FAB -- */
+  .fab{position:absolute;bottom:calc(80px + var(--safe-b));right:20px;width:52px;height:52px;border-radius:50%;background:var(--grad);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;color:#1a2030;box-shadow:0 4px 20px rgba(95,199,254,0.35);z-index:50;transition:transform 0.15s}
+  .fab:active{transform:scale(0.93)}
+  .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.6);z-index:190;display:none;align-items:flex-end;border-radius:48px}
+  .modal-overlay.open{display:flex}
+  .modal-sheet{width:100%;background:var(--bg3);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);padding:20px 18px calc(24px + var(--safe-b))}
+  .modal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+  .modal-close{font-size:22px;color:var(--text3);cursor:pointer;line-height:1}
+  .ql-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .ql-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  .d-badge{background:var(--red);color:white;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;margin-left:auto}
 .rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .rpt-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:14px;cursor:pointer;transition:border-color .2s}
 .rpt-card:active{border-color:var(--border2)}
@@ -367,7 +378,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="d-item" onclick="closeDrawer();switchTab('transactions')"><div class="d-ico" style="background:rgba(95,199,254,0.08)">≡</div><span class="d-lbl">Transactions</span><span class="d-count" id="d-txn-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();switchTab('reports')"><div class="d-ico" style="background:rgba(102,234,185,0.08)">◎</div><span class="d-lbl">Reports</span></div>
     <div class="d-section">Data</div>
-    <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span></div>
+    <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span><span class="d-badge" id="d-cmt-badge" style="display:none">!</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('assets')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">🏠</div><span class="d-lbl">Assets</span><span class="d-count" id="d-ast-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('liabilities')"><div class="d-ico" style="background:rgba(255,107,107,0.10)">🏦</div><span class="d-lbl">Liabilities</span><span class="d-count" id="d-lib-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('accounts')"><div class="d-ico" style="background:rgba(95,199,254,0.10)">💳</div><span class="d-lbl">Accounts</span><span class="d-count" id="d-acc-count">–</span></div>
@@ -471,6 +482,29 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="scroll" id="dash-scroll">
     <div id="dash-widgets"></div>
   </div>
+  <!-- Quick-log FAB -->
+  <button class="fab" onclick="openQuickLog()">+</button>
+</div>
+
+<!-- Quick-log modal -->
+<div class="modal-overlay" id="ql-modal" onclick="if(event.target===this)closeQuickLog()">
+  <div class="modal-sheet">
+    <div class="modal-title">Quick Log <span class="modal-close" onclick="closeQuickLog()">×</span></div>
+    <div class="field-row"><div class="ql-label">Description</div><input class="field-input" id="ql-desc" placeholder="e.g. Carrefour groceries" autocomplete="off"></div>
+    <div class="ql-row">
+      <div><div class="ql-label">Amount (AED)</div><input class="field-input" id="ql-amt" type="number" placeholder="0.00"></div>
+      <div><div class="ql-label">Direction</div><select class="field-select" id="ql-dir"><option value="Expense">Expense</option><option value="Income">Income</option></select></div>
+    </div>
+    <div class="ql-row">
+      <div><div class="ql-label">Method</div><select class="field-select" id="ql-method"><option>ENBD AED Account</option><option>WIO AED Account</option><option>WIO Credit Card</option><option>Tabby Card</option><option>Cash - AED</option><option>EI AED Account</option><option>LBC CAD Credit Card</option></select></div>
+      <div><div class="ql-label">Category</div><input class="field-input" id="ql-cat" placeholder="e.g. Dining" list="ql-cat-list"><datalist id="ql-cat-list"></datalist></div>
+    </div>
+    <div class="ql-row">
+      <div><div class="ql-label">Tag</div><select class="field-select" id="ql-tag"><option value="">None</option><option>Home</option><option>Rabie</option><option>Nour</option><option>Kids</option><option>Parents</option><option>Lilia</option></select></div>
+      <div><div class="ql-label">Date</div><input class="field-input" id="ql-date" type="date"></div>
+    </div>
+    <button class="save-btn" onclick="submitQuickLog()">Save Transaction</button>
+  </div>
 </div>
 
 <!-- =========== AI CHAT =========== -->
@@ -495,7 +529,7 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="msgs" id="msgs">
     <div class="msg-row">
       <div class="avatar av-ai">Q</div>
-      <div class="bubble b-ai"><span class="grad-text" style="font-weight:700">مرحبا Rabie 👋</span><br><br>I'm connected to your live Qeema data. Ask me anything or log a transaction.<br><br><span style="color:var(--teal);font-style:italic">"Zuma dinner 680 AED WIO card"</span></div>
+      <div class="bubble b-ai"><span class="grad-text" style="font-weight:700">Hello Rabie 👋</span><br><br>I'm connected to your live Qeema data. Ask me anything or log a transaction.<br><br><span style="color:var(--teal);font-style:italic">"Zuma dinner 680 AED WIO card"</span></div>
     </div>
   </div>
   <div class="chat-input-area">
@@ -517,6 +551,16 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="filter-btn" id="txn-filter-btn" onclick="openFP('txn')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg> Filter <span id="txn-fc" style="display:none;background:var(--teal);color:#1a2030;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span></div>
     <div class="sort-btn active" id="sort-date" onclick="setTxnSort('date')">↓ Date</div>
     <div class="sort-btn" id="sort-amount" onclick="setTxnSort('amount')">↓ Amount</div>
+  </div>
+  <!-- Month quick-filter row -->
+  <div style="display:flex;gap:6px;overflow-x:auto;padding:0 16px 8px;flex-shrink:0" id="month-tabs">
+    <div class="fchip active" id="mtab-all" onclick="setMonthFilter('')">All</div>
+    <div class="fchip" id="mtab-2026-01" onclick="setMonthFilter('2026-01')">Jan</div>
+    <div class="fchip" id="mtab-2026-02" onclick="setMonthFilter('2026-02')">Feb</div>
+    <div class="fchip" id="mtab-2026-03" onclick="setMonthFilter('2026-03')">Mar</div>
+    <div class="fchip" id="mtab-2026-04" onclick="setMonthFilter('2026-04')">Apr</div>
+    <div class="fchip" id="mtab-2026-05" onclick="setMonthFilter('2026-05')">May</div>
+    <div class="fchip" id="mtab-2026-06" onclick="setMonthFilter('2026-06')">Jun</div>
   </div>
   <div class="active-filters" id="txn-af" style="display:none"></div>
   <div class="txn-count" id="txn-count-lbl"></div>
@@ -751,7 +795,7 @@ async function renderAssets(q=''){
     const ico={Property:'🏠',Vehicle:'🚗',Jewelry:'💍',Investment:'📈',Cash:'💵',Other:'📦'}[a.asset_type]||'📦';
     const item=document.createElement('div'); item.className='list-item';
     item.onclick=()=>openDetail('asset',a);
-    item.innerHTML=`<div class="list-ico" style="background:rgba(102,234,185,0.10)">${ico}</div><div class="list-info"><div class="list-name">${a.asset_name}</div><div class="list-sub">${a.asset_type} · ${a.location||''}</div></div><div class="list-right"><div class="list-val" style="color:var(--green)">${fmtFull(a.current_value_base||0)}</div><div class="list-date">${a.current_value_ccy||'AED'}</div></div><span class="list-arrow">›</span>`;
+    item.innerHTML=`<div class="list-ico" style="background:rgba(102,234,185,0.10)">${ico}</div><div class="list-info"><div class="list-name">${a.asset_name}</div><div class="list-sub">${a.asset_type} · ${a.location||''}</div></div><div class="list-right"><div class="list-val" style="color:var(--green)">${fmtFull(a.current_value_base||0)}</div><div class="list-date">${a.current_value_ccy||'AED'}</div></div><span style="font-size:11px;color:var(--teal);margin-left:6px;cursor:pointer;flex-shrink:0" onclick="event.stopPropagation();openAssetRevalue('${a.asset_id}','${(a.asset_name||'').replace(/'/g,"\\'")}',${a.current_value||0},'${a.current_value_ccy||'AED'}')">↻</span>`;
     card.appendChild(item);
   });
   list.appendChild(card);
@@ -1457,26 +1501,28 @@ function buildWidget(id,liquidCash,newInc,newExp){
     </div>`;
   }
   if(id==='kpi'){
-    const runwayMo=liquidCash/((BASE.expJan+BASE.expFeb+BASE.expMar)/3);
+    const live = calcLiveKPIs();
+    const sr   = live ? live.savingsRate : BASE.savingsRate;
+    const dti  = live ? live.dti        : BASE.dti;
+    const dscr = live ? live.dscr       : BASE.dscr;
+    const disc = live ? live.discPct    : BASE.discPct;
+    const liveTag = live ? '' : ' (baseline)';
     const sc=[
-      {n:'Savings Rate',v:(BASE.savingsRate*100).toFixed(2)+'%',ok:BASE.savingsRate>=0.10,warn:BASE.savingsRate<0.05,s:'Rolling 12M · target ≥10%'},
-      {n:'Debt-to-Income',v:(BASE.dti*100).toFixed(2)+'%',ok:BASE.dti<=0.30,warn:BASE.dti>0.40,s:'Target ≤30%'},
-      {n:'Debt Service Coverage Ratio',v:BASE.dscr.toFixed(2)+'x',ok:BASE.dscr>=1.5,warn:BASE.dscr<1.0,s:'Target ≥1.5x'},
-      {n:'Discretionary %',v:(BASE.discPct*100).toFixed(2)+'%',ok:BASE.discPct<=0.30,warn:BASE.discPct>0.40,s:'Target ≤30%'},
+      {n:'Savings Rate',     v:(sr*100).toFixed(2)+'%',  ok:sr>=0.10,   warn:sr<0.05,   s:'Rolling 12M · target ≥10%'+liveTag},
+      {n:'Debt-to-Income',   v:(dti*100).toFixed(2)+'%', ok:dti<=0.30,  warn:dti>0.40,  s:'Target ≤30%'+liveTag},
+      {n:'DSCR',             v:dscr.toFixed(2)+'x',      ok:dscr>=1.5,  warn:dscr<1.0,  s:'Debt service coverage · target ≥1.5x'},
+      {n:'Discretionary %',  v:(disc*100).toFixed(2)+'%',ok:disc<=0.30, warn:disc>0.40, s:'Non-core spend · target ≤30%'+liveTag},
     ];
     return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Health Scorecard</div>${sc.map(s=>`<div class="kpi-row"><div><div class="kpi-name">${s.n}</div><div style="font-size:10px;color:var(--text3)">${s.s}</div></div><div class="kpi-right"><span class="kpi-val">${s.v}</span><span class="pill ${s.ok?'pill-g':s.warn?'pill-r':'pill-a'}">${s.ok?'On Track':s.warn?'Critical':'Watch'}</span></div></div>`).join('')}</div>`;
   }
   if(id==='spending'){
-    const MAR=[{cat:'Groceries',val:7315},{cat:'Dining',val:3727},{cat:'Personal',val:4069},{cat:'Household Care',val:2468},{cat:'Transportation',val:2699}];
-    const newByCat={};
-    allTxns.filter(t=>{const d=new Date(t.txn_date);return t.direction==='Expense'&&d>=new Date('2026-03-24');}).forEach(t=>{newByCat[t.category]=(newByCat[t.category]||0)+t.amount_base;});
-    const combined=[...MAR];
-    Object.entries(newByCat).forEach(([cat,val])=>{const ex=combined.find(c=>c.cat===cat);if(ex)ex.val+=val;else combined.push({cat,val});});
-    combined.sort((a,b)=>b.val-a.val);
-    const total=combined.reduce((s,c)=>s+c.val,0);
-    const top4=combined.slice(0,4);
+    const byCat={};
+    allTxns.filter(t=>t.direction==='Expense').forEach(t=>{byCat[t.category]=(byCat[t.category]||0)+(t.amount_base||0);});
+    const catArr=Object.entries(byCat).map(([cat,val])=>({cat,val})).sort((a,b)=>b.val-a.val);
+    const total=catArr.reduce((s,c)=>s+c.val,0)||1;
+    const top4=catArr.slice(0,4);
     const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347'];
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Spending by Category</div>${top4.map(({cat,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/Math.max(total,1)*100).toFixed(0)}%;background:${colors[i]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}</div>`;
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Spending by Category</div>${top4.map(({cat,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}</div>`;
   }
   if(id==='upcoming'){
     const pend=allCommitments.filter(c=>c.status==='Pending').slice(0,4);
@@ -1579,6 +1625,26 @@ function renderReports(){
     <div class="section-lbl">Loans Snapshot</div>
     <div class="card" style="padding:10px 14px">
       ${allLiabilities.length?allLiabilities.map(l=>{const rem=l.loan_currency==='USD'?(l.remaining_principal||0)*3.67:(l.remaining_principal||0);const orig=l.loan_currency==='USD'?(l.original_principal||0)*3.67:(l.original_principal||0);const pct=orig>0?Math.min(100,((orig-rem)/orig)*100):0;return `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:var(--text)">${l.liability_name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(rem)} ${l.loan_currency}</span></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px"><span>${l.interest_type||''} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.remaining_pmts||0} pmts</span><span>AED ${fmtFull(l.monthly_payment||0)}/mo</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">${pct.toFixed(1)}% paid</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px">No active loans</div>'}
+    </div>
+    <div class="section-lbl">Income Statement</div>
+    <div class="card" style="padding:10px 14px">
+      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;color:var(--text3)">Month</span>
+        <span style="font-size:10px;color:var(--text3);text-align:right">Income</span>
+        <span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span>
+        <span style="font-size:10px;color:var(--text3);text-align:right">Net</span>
+      </div>
+      ${buildIncomeStatement().slice(-6).map(m=>{
+        const net=m.inc-m.exp;
+        const mo=m.ym.split('-');
+        const moName=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo[1])-1];
+        return `<div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+          <span style="font-size:11px;font-weight:600;color:var(--text2)">${moName}</span>
+          <span style="font-size:11px;font-weight:600;color:var(--green);text-align:right">${m.inc>0?fmtFull(m.inc):'-'}</span>
+          <span style="font-size:11px;font-weight:600;color:var(--red);text-align:right">${m.exp>0?fmtFull(m.exp):'-'}</span>
+          <span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>
+        </div>`;
+      }).join('')}
     </div>
     <div class="section-lbl">AI Reports</div>
     <div class="rpt-grid">
@@ -1803,7 +1869,7 @@ RESPONSE RULES:
 - Just answer directly. Numbers → visual block.
 - All AED: 2 decimal places with comma separators.
 
-PERSONALITY: Direct, no fluff. Light Arabic (Yalla, Habibi, Tamam, Khalas, Mabrouk). Flag: ⚠ critical cash, upcoming large commitments, KPI breaches.`;
+PERSONALITY: Direct, no fluff, English only. Flag: ⚠ critical cash, upcoming large commitments, KPI breaches.`;
 
 async function callClaude(userMsg){
   if(userMsg) chatHistory.push({role:'user',content:userMsg});
@@ -1926,6 +1992,7 @@ async function handleSend(){
     if(ops.UPD_AST){try{const o=JSON.parse(ops.UPD_AST[1]);await sbPatch('assets','asset_id=eq.'+o.asset_id,{current_value:o.current_value,current_value_base:o.current_value_base});const a=allAssets.find(x=>x.asset_id===o.asset_id);if(a){a.current_value=o.current_value;a.current_value_base=o.current_value_base;}showToast('✓ Asset updated');renderDashboard();}catch(e){}}
     if(ops.UPD_LIB){try{const o=JSON.parse(ops.UPD_LIB[1]);const l=allLiabilities.find(x=>x.liability_id===o.liability_id);if(l){const np=Math.max(0,(l.remaining_principal||0)-o.payment_amount);const nm=Math.max(0,(l.remaining_pmts||0)-1);await sbPatch('liabilities','liability_id=eq.'+o.liability_id,{remaining_principal:np,remaining_pmts:nm});l.remaining_principal=np;l.remaining_pmts=nm;showToast('✓ Loan payment recorded');renderDashboard();}}catch(e){}}
     updateCounts();
+    saveChatHistory();
   }catch(e){removeTyping();addMsg('⚠ '+e.message+'<br><span style="color:var(--text3);font-size:11px">Check your connection and try again.</span>',false);}
 }
 function quickSend(text){
@@ -1954,8 +2021,228 @@ ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min
 // ==============================================
 // LOAD & INIT
 // ==============================================
+// =============================================
+// FEATURE 1: LIVE KPI CALCULATION FROM DB
+// =============================================
+function calcLiveKPIs(){
+  if(!allTxns.length) return null;
+  // Rolling 12M
+  const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear()-1);
+  const yr = allTxns.filter(t=>new Date(t.txn_date)>=cutoff);
+  const inc12 = yr.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
+  const exp12 = yr.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
+  const savingsRate = inc12>0 ? (inc12-exp12)/inc12 : BASE.savingsRate;
+  const loanPmts = allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
+  const dti = inc12>0 ? (loanPmts*12)/inc12 : BASE.dti;
+  const avgMonthlyInc = inc12/12||BASE.monthlyIncome;
+  const dscr = loanPmts>0 ? avgMonthlyInc/loanPmts : BASE.dscr;
+  const discExp = yr.filter(t=>t.direction==='Expense'&&t.core_flag==='Non-Core').reduce((s,t)=>s+(t.amount_base||0),0);
+  const discPct = exp12>0 ? discExp/exp12 : BASE.discPct;
+  return { savingsRate, dti, dscr, discPct };
+}
+
+// =============================================
+// FEATURE 2: INCOME STATEMENT in Reports
+// =============================================
+function buildIncomeStatement(){
+  const monthMap={};
+  allTxns.forEach(t=>{
+    if(!t.txn_date) return;
+    const ym=t.txn_date.substring(0,7);
+    if(!monthMap[ym]) monthMap[ym]={ym,inc:0,exp:0,cats:{}};
+    if(t.direction==='Income') monthMap[ym].inc+=(t.amount_base||0);
+    else {
+      monthMap[ym].exp+=(t.amount_base||0);
+      const cat=t.category||'Other';
+      monthMap[ym].cats[cat]=(monthMap[ym].cats[cat]||0)+(t.amount_base||0);
+    }
+  });
+  return Object.values(monthMap).sort((a,b)=>a.ym.localeCompare(b.ym));
+}
+
+// =============================================
+// FEATURE 3: NOTIFICATION BADGES
+// =============================================
+function updateNotifications(){
+  const today = new Date();
+  const in7days = new Date(); in7days.setDate(today.getDate()+7);
+  const dueSoon = allCommitments.filter(c=>{
+    if(c.status!=='Pending') return false;
+    if(!c.expected_date) return false;
+    const d = new Date(c.expected_date);
+    return d>=today && d<=in7days;
+  });
+  const badge = document.getElementById('d-cmt-badge');
+  if(badge){
+    badge.style.display = dueSoon.length>0 ? 'inline' : 'none';
+    badge.textContent = dueSoon.length;
+  }
+  // Also update tab bar if commitments tab exists
+}
+
+// =============================================
+// FEATURE 5: QUICK LOG FAB
+// =============================================
+function openQuickLog(){
+  const modal = document.getElementById('ql-modal');
+  // Set today's date
+  document.getElementById('ql-date').value = new Date().toISOString().split('T')[0];
+  // Populate categories datalist
+  const dl = document.getElementById('ql-cat-list');
+  const cats = [...new Set(allTxns.map(t=>t.category).filter(Boolean))].sort();
+  dl.innerHTML = cats.map(c=>`<option value="${c}">`).join('');
+  // Populate methods
+  const methodSel = document.getElementById('ql-method');
+  if(allAccounts.length){
+    methodSel.innerHTML = allAccounts.filter(a=>a.is_active==='Y').map(a=>`<option>${a.method_name}</option>`).join('');
+  }
+  modal.classList.add('open');
+  setTimeout(()=>document.getElementById('ql-desc').focus(),100);
+}
+function closeQuickLog(){
+  document.getElementById('ql-modal').classList.remove('open');
+}
+async function submitQuickLog(){
+  const desc = document.getElementById('ql-desc').value.trim();
+  const amt  = parseFloat(document.getElementById('ql-amt').value)||0;
+  const dir  = document.getElementById('ql-dir').value;
+  const method = document.getElementById('ql-method').value;
+  const cat  = document.getElementById('ql-cat').value.trim()||'Miscellaneous';
+  const tag  = document.getElementById('ql-tag').value;
+  const date = document.getElementById('ql-date').value;
+  if(!desc||!amt){ showToast('Fill in description and amount',true); return; }
+  const spreadCats=['Housing','Insurance'];
+  const obj={
+    description:desc, txn_date:date, direction:dir,
+    category:cat, amount_original:amt, currency_code:'AED',
+    amount_base:amt, txn_method:method,
+    tags:tag||null, core_flag:'Core',
+    val_recog_type:spreadCats.includes(cat)?'Spread':'Immediate',
+  };
+  const res = await sbPost('transactions', obj);
+  if(res && !res.error){
+    allTxns.unshift(res[0]||obj);
+    showToast('✓ Transaction saved');
+    closeQuickLog();
+    renderDashboard();
+    applyTxnFilters();
+    updateCounts();
+    // Clear form
+    document.getElementById('ql-desc').value='';
+    document.getElementById('ql-amt').value='';
+  } else {
+    showToast('⚠ Save failed',true);
+  }
+}
+
+// =============================================
+// FEATURE 6: MONTH FILTER TABS
+// =============================================
+let activeMonthFilter = '';
+function setMonthFilter(ym){
+  activeMonthFilter = ym;
+  // Update tab highlighting
+  document.querySelectorAll('#month-tabs .fchip').forEach(c=>c.classList.remove('active'));
+  const id = ym ? 'mtab-'+ym : 'mtab-all';
+  const el = document.getElementById(id);
+  if(el) el.classList.add('active');
+  // Apply to filter state
+  if(ym){
+    const firstDay = ym+'-01';
+    const lastDay = ym+'-'+new Date(ym.split('-')[0], ym.split('-')[1], 0).getDate();
+    txnF.from = firstDay;
+    txnF.to = lastDay;
+  } else {
+    txnF.from = '';
+    txnF.to = '';
+  }
+  renderTxnFiltered();
+}
+
+// Dynamically build month tabs from loaded data
+function buildMonthTabs(){
+  const months = [...new Set(allTxns.map(t=>t.txn_date?t.txn_date.substring(0,7):null).filter(Boolean))].sort().reverse().slice(0,6).reverse();
+  const container = document.getElementById('month-tabs');
+  if(!container) return;
+  const monthNames = {
+    '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun',
+    '07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'
+  };
+  container.innerHTML = `<div class="fchip active" id="mtab-all" onclick="setMonthFilter('')">All</div>`;
+  months.forEach(ym=>{
+    const [yr,mo] = ym.split('-');
+    const lbl = monthNames[mo]+(yr!=='2026'?' '+yr.slice(2):'');
+    const chip = document.createElement('div');
+    chip.className = 'fchip';
+    chip.id = 'mtab-'+ym;
+    chip.textContent = lbl;
+    chip.onclick = ()=>setMonthFilter(ym);
+    container.appendChild(chip);
+  });
+}
+
+// =============================================
+// FEATURE 7: ASSET QUICK REVALUATION
+// =============================================
+function openAssetRevalue(assetId, assetName, currentVal, ccy){
+  const newVal = prompt(`Update current value for ${assetName}\nCurrent: ${fmtFull(currentVal)} ${ccy}\n\nNew value (${ccy}):`, currentVal);
+  if(!newVal || isNaN(parseFloat(newVal))) return;
+  const val = parseFloat(newVal);
+  // Convert to AED
+  const fxMap={'AED':1,'USD':3.67,'EUR':4.02,'GBP':4.65,'CAD':2.70};
+  const valBase = val * (fxMap[ccy]||1);
+  sbPatch('assets','asset_id=eq.'+assetId,{current_value:val, current_value_base:parseFloat(valBase.toFixed(2))}).then(()=>{
+    const a = allAssets.find(x=>x.asset_id===assetId);
+    if(a){ a.current_value=val; a.current_value_base=valBase; }
+    showToast('✓ '+assetName+' updated to '+fmtFull(val)+' '+ccy);
+    renderDashboard();
+    if(currentMgmt==='assets') renderAssets('');
+  });
+}
+
+// =============================================
+// FEATURE 9: AI CONVERSATION MEMORY
+// =============================================
+const CHAT_MEMORY_KEY = 'qeema_chat_history';
+const MAX_SAVED_MSGS = 20; // keep last 20 exchanges
+
+function saveChatHistory(){
+  try{
+    // Save last N messages (trim to avoid localStorage bloat)
+    const toSave = chatHistory.slice(-MAX_SAVED_MSGS);
+    localStorage.setItem(CHAT_MEMORY_KEY, JSON.stringify(toSave));
+  }catch(e){}
+}
+
+function loadChatHistory(){
+  try{
+    const saved = localStorage.getItem(CHAT_MEMORY_KEY);
+    if(!saved) return;
+    const msgs = JSON.parse(saved);
+    if(!msgs || !msgs.length) return;
+    chatHistory = msgs;
+    // Render saved messages in UI
+    const msgsEl = document.getElementById('msgs');
+    // Clear default welcome
+    msgsEl.innerHTML='';
+    msgs.forEach(m=>{
+      if(m.role==='user') addMsg(m.content, true);
+      else if(m.role==='assistant'){
+        // Strip query blocks before displaying
+        const disp = m.content.replace(/\[\[(?:TXN|CMT|AST|LIB|TRF|ACC|TAG|ASM|FXR|SETTLE|UPD_AST|UPD_LIB|VIS_TABLE|VIS_BAR|VIS_KPI|QUERY):[\s\S]*?\]\]/g,'').trim();
+        if(disp && disp !== '[Querying live database...]') addMsg(disp, false);
+      }
+    });
+    if(msgs.length){
+      const note = document.createElement('div');
+      note.style.cssText='text-align:center;font-size:10px;color:var(--text3);padding:4px 0 10px';
+      note.textContent = '— Previous conversation restored —';
+      document.getElementById('msgs').prepend(note);
+    }
+  }catch(e){ chatHistory=[]; }
+}
+
 async function loadAll(){
-  // Show app immediately - don't wait for data
   const theme=localStorage.getItem('qeema_theme')||'dark';
   document.documentElement.setAttribute('data-theme',theme);
   const h=new Date().getHours();
@@ -1963,27 +2250,26 @@ async function loadAll(){
   const greeting=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
   document.getElementById('dash-greeting').textContent=greeting+', '+name;
   document.getElementById('loading').style.display='none';
+  loadChatHistory();
   renderDashboard();
-
-  // Load data in background - prioritise transactions first
   try{
-    // Load critical data first (fast queries)
     [allLiabilities,allAssets]=await Promise.all([
       sbGet('liabilities','status=eq.Active'),
-      sbGet('assets','select=asset_id,asset_name,asset_type,current_value_base,current_value_ccy,location'),
+      sbGet('assets','select=*'),
     ]);
     renderDashboard();
-
-    // Then load larger datasets
-    [allTxns,allCommitments]=await Promise.all([
+    [allTxns,allCommitments,allAccounts]=await Promise.all([
       sbGet('transactions','order=txn_date.desc&limit=300'),
       sbGet('commitments','order=expected_date.asc'),
+      sbGet('accounts','is_active=eq.Y&order=method_name.asc'),
     ]);
     renderDashboard();
     applyTxnFilters();
+    buildMonthTabs();
     updateCounts();
+    updateNotifications();
   }catch(e){
-    showToast('⚠ Connection issue - some data may not load',true);
+    showToast('Connection issue - some data may not load',true);
   }
 }
 loadAll();
