@@ -378,7 +378,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="d-item" onclick="closeDrawer();switchTab('transactions')"><div class="d-ico" style="background:rgba(95,199,254,0.08)">≡</div><span class="d-lbl">Transactions</span><span class="d-count" id="d-txn-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();switchTab('reports')"><div class="d-ico" style="background:rgba(102,234,185,0.08)">◎</div><span class="d-lbl">Reports</span></div>
     <div class="d-section">Data</div>
-    <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span><span class="d-badge" id="d-cmt-badge" style="display:none">!</span></div>
+    <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('assets')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">🏠</div><span class="d-lbl">Assets</span><span class="d-count" id="d-ast-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('liabilities')"><div class="d-ico" style="background:rgba(255,107,107,0.10)">🏦</div><span class="d-lbl">Liabilities</span><span class="d-count" id="d-lib-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('accounts')"><div class="d-ico" style="background:rgba(95,199,254,0.10)">💳</div><span class="d-lbl">Accounts</span><span class="d-count" id="d-acc-count">–</span></div>
@@ -398,13 +398,17 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="mgmt-title">Commitments</div>
     <button class="mgmt-add" onclick="openDetail('commitment',null)">+</button>
   </div>
-  <div class="search-wrap"><div class="search-bar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg><input type="text" placeholder="Search commitments…" oninput="renderFilteredCmts(this.value)"></div></div>
-  <div class="filter-bar">
-    <div class="filter-btn" id="cmt-filter-btn" onclick="openFP('cmt')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M7 12h10M11 18h2" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg> Filter <span id="cmt-fc" style="display:none;background:var(--teal);color:#1a2030;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">0</span></div>
+  <div class="search-wrap"><div class="search-bar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg><input type="text" placeholder="Search commitments…" id="cmt-search-inp" oninput="renderFilteredCmts(this.value)"></div></div>
+  <div style="display:flex;gap:6px;padding:0 16px 8px;flex-shrink:0;overflow-x:auto">
+    <div class="fchip active" id="cmt-tab-all"      onclick="setCmtTab('all',this)">All</div>
+    <div class="fchip"        id="cmt-tab-10d"      onclick="setCmtTab('10d',this)">Due in 10 days</div>
+    <div class="fchip"        id="cmt-tab-pending"  onclick="setCmtTab('pending',this)">Pending</div>
+    <div class="fchip"        id="cmt-tab-settled"  onclick="setCmtTab('settled',this)">Settled</div>
+  </div>
+  <div style="display:flex;gap:6px;padding:0 16px 8px;flex-shrink:0">
     <div class="sort-btn active" id="cmt-sd" onclick="setCmtSort('date')">↓ Date</div>
     <div class="sort-btn" id="cmt-sa" onclick="setCmtSort('amount')">↓ Amount</div>
   </div>
-  <div class="active-filters" id="cmt-af" style="display:none"></div>
   <div class="mgmt-body" id="mgmt-cmt-list"></div>
   <div class="filter-overlay" id="cmt-filter-overlay" onclick="closeFP('cmt')"></div>
   <div class="filter-panel" id="cmt-fp">
@@ -604,7 +608,7 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div class="u-header-title" style="flex:1">Reports</div>
-    <div style="font-size:11px;color:var(--text3)">Live · AED</div>
+    <button class="edit-dash-btn" id="edit-rpt-btn" onclick="toggleRptEdit()">Edit</button>
   </div>
   <div class="search-wrap"><div class="search-bar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg><input type="text" placeholder="Ask AI about your reports…" id="rpt-search" onkeydown="if(event.key==='Enter'){quickSend(this.value);this.value=''}"></div></div>
   <div class="scroll" style="padding-top:0" id="reports-body"></div>
@@ -658,14 +662,34 @@ const cmtF={ status:'',dir:'',cat:'',tag:'',from:'',to:'' };
 
 // Dashboard widget config - stored in localStorage
 const WIDGET_DEFS = [
-  { id:'networth',   label:'Net Worth',              'default':true },
-  { id:'kpi',        label:'KPI Scorecard',           'default':true },
-  { id:'spending',   label:'Spending Breakdown',      'default':true },
-  { id:'upcoming',   label:'Upcoming Commitments',    'default':true },
-  { id:'freecash',   label:'Free Cash',               'default':true },
-  { id:'avsliab',    label:'Assets vs Liabilities',   'default':true },
-  { id:'recent',     label:'Recent Transactions',     'default':true },
+  { id:'networth',   label:'Net Worth',                'default':true },
+  { id:'kpi',        label:'KPI Scorecard',             'default':true },
+  { id:'spending',   label:'Spending Breakdown',        'default':true },
+  { id:'upcoming',   label:'Upcoming Commitments',      'default':true },
+  { id:'freecash',   label:'Free Cash',                 'default':true },
+  { id:'avsliab',    label:'Assets vs Liabilities',     'default':true },
+  { id:'recent',     label:'Recent Transactions',       'default':true },
+  { id:'nextloan',   label:'Next Loan Payment',         'default':false },
+  { id:'pendcmt',    label:'Pending Commitments',       'default':false },
+  { id:'toptag',     label:'Top Spending Tag',          'default':false },
 ];
+
+const REPORT_WIDGETS = [
+  { id:'rpt-income',   label:'Income Statement',       'default':true  },
+  { id:'rpt-cashflow', label:'Cash Flow Statement',    'default':true  },
+  { id:'rpt-balance',  label:'Balance Sheet',          'default':true  },
+  { id:'rpt-catspend', label:'Spending by Category',   'default':true  },
+  { id:'rpt-tagspend', label:'Spending by Tag',        'default':true  },
+  { id:'rpt-methods',  label:'Payment Method Balances','default':true  },
+  { id:'rpt-loans',    label:'Loan Snapshot',          'default':true  },
+];
+function loadRptConfig(){ try{ return JSON.parse(localStorage.getItem('qeema_rpt_widgets')||'null'); }catch(e){return null;} }
+function saveRptConfig(cfg){ localStorage.setItem('qeema_rpt_widgets',JSON.stringify(cfg)); }
+function getRptConfig(){
+  const saved=loadRptConfig();
+  if(saved) return saved;
+  return REPORT_WIDGETS.map((w,i)=>({...w,visible:w['default'],order:i}));
+}
 
 function loadWidgetConfig() {
   try { return JSON.parse(localStorage.getItem('qeema_widgets') || 'null'); } catch(e){ return null; }
@@ -1370,51 +1394,72 @@ function applyCmtFilters(){
   cmtF.to=document.getElementById('cmt-fp-to')?.value||'';
   renderFilteredCmts('');
 }
+let cmtTabActive='all';
+function setCmtTab(tab, el){
+  cmtTabActive=tab;
+  document.querySelectorAll('[id^="cmt-tab-"]').forEach(e=>e.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderFilteredCmts(document.getElementById('cmt-search-inp')?.value||'');
+}
 function setCmtSort(by){
   cmtSort=by;
   document.getElementById('cmt-sd').classList.toggle('active',by==='date');
   document.getElementById('cmt-sa').classList.toggle('active',by==='amount');
-  renderFilteredCmts('');
+  renderFilteredCmts(document.getElementById('cmt-search-inp')?.value||'');
 }
 function renderFilteredCmts(q=''){
   let cmts=[...allCommitments];
-  if(cmtF.status) cmts=cmts.filter(c=>c.status===cmtF.status);
-  if(cmtF.dir) cmts=cmts.filter(c=>c.direction===cmtF.dir);
-  if(cmtF.cat) cmts=cmts.filter(c=>c.category===cmtF.cat);
-  if(cmtF.tag) cmts=cmts.filter(c=>c.tags===cmtF.tag);
-  if(cmtF.from) cmts=cmts.filter(c=>(c.expected_date||'')>=cmtF.from);
-  if(cmtF.to) cmts=cmts.filter(c=>(c.expected_date||'')<=cmtF.to);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const in10=new Date(today); in10.setDate(today.getDate()+10);
+  // Apply tab filter
+  if(cmtTabActive==='10d') cmts=cmts.filter(c=>{if(!c.expected_date)return false;const d=new Date(c.expected_date);return d>=today&&d<=in10;});
+  else if(cmtTabActive==='pending') cmts=cmts.filter(c=>c.status==='Pending');
+  else if(cmtTabActive==='settled') cmts=cmts.filter(c=>c.status==='Settled');
+  // Search
   if(q) cmts=cmts.filter(c=>(c.description||'').toLowerCase().includes(q.toLowerCase())||(c.category||'').toLowerCase().includes(q.toLowerCase()));
+  // Sort
   if(cmtSort==='date') cmts.sort((a,b)=>(a.expected_date||'').localeCompare(b.expected_date||''));
   else cmts.sort((a,b)=>(b.amount_base||0)-(a.amount_base||0));
-  // Active filters
-  const active=Object.entries(cmtF).filter(([k,v])=>v!=='');
-  const afEl=document.getElementById('cmt-af');
-  if(afEl){afEl.style.display=active.length?'flex':'none';afEl.innerHTML=active.map(([k,v])=>`<div class="af-chip">${k}:${v} <span class="af-x" onclick="clearCmtFilter('${k}')">×</span></div>`).join('');}
-  const fcEl=document.getElementById('cmt-fc');
-  if(fcEl){fcEl.style.display=active.length?'inline':'none';fcEl.textContent=active.length;}
-  const btnEl=document.getElementById('cmt-filter-btn');
-  if(btnEl) btnEl.classList.toggle('has-filters',active.length>0);
   const list=document.getElementById('mgmt-cmt-list');
   list.innerHTML='';
-  if(!cmts.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No commitments match filters</div>';return;}
-  const byStatus={};
-  cmts.forEach(c=>{const s=c.status||'Pending';if(!byStatus[s])byStatus[s]=[];byStatus[s].push(c);});
-  ['Pending','Settled','Cancelled'].forEach(status=>{
-    if(!byStatus[status]?.length)return;
-    const sec=document.createElement('div');
-    sec.innerHTML=`<div class="section-lbl">${status} (${byStatus[status].length})</div>`;
-    const card=document.createElement('div');card.className='card';card.style.padding='10px 14px';
-    byStatus[status].forEach(c=>{
-      const item=document.createElement('div');item.className='list-item';
-      item.onclick=()=>openDetail('commitment',c);
-      item.innerHTML=`<div class="list-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div><div class="list-info"><div class="list-name">${c.description}</div><div class="list-sub">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''} · ${c.tags||''}</div></div><div class="list-right"><div class="list-val ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div><div class="list-date"><span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div></div><span class="list-arrow">›</span>`;
-      card.appendChild(item);
+  if(!cmts.length){list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No commitments found</div>';return;}
+  // Summary bar
+  const pendIn=cmts.filter(c=>c.status==='Pending'&&c.direction==='Income').reduce((s,c)=>s+(c.amount_base||0),0);
+  const pendOut=cmts.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+  if(pendIn||pendOut){
+    const sumDiv=document.createElement('div');
+    sumDiv.style.cssText='display:flex;gap:8px;padding:0 0 10px';
+    sumDiv.innerHTML=`<div style="flex:1;background:rgba(102,234,185,0.08);border:1px solid rgba(102,234,185,0.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Pending Income</div><div style="font-size:15px;font-weight:700;color:var(--green)">+${fmtFull(pendIn)}</div></div><div style="flex:1;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Pending Expenses</div><div style="font-size:15px;font-weight:700;color:var(--red)">-${fmtFull(pendOut)}</div></div>`;
+    list.appendChild(sumDiv);
+  }
+  // Group by status only if showing all
+  if(cmtTabActive==='all'){
+    const byStatus={};
+    cmts.forEach(c=>{const s=c.status||'Pending';if(!byStatus[s])byStatus[s]=[];byStatus[s].push(c);});
+    ['Pending','Settled','Cancelled'].forEach(status=>{
+      if(!byStatus[status]?.length)return;
+      const sec=document.createElement('div');
+      sec.innerHTML=`<div class="section-lbl">${status} (${byStatus[status].length})</div>`;
+      list.appendChild(sec);
+      renderCmtItems(byStatus[status],list);
     });
-    sec.appendChild(card);list.appendChild(sec);
-  });
+  } else {
+    renderCmtItems(cmts,list);
+  }
 }
-function clearCmtFilter(k){cmtF[k]='';renderFilteredCmts('');}
+function renderCmtItems(cmts,list){
+  const card=document.createElement('div');card.className='card';card.style.padding='10px 14px';
+  cmts.forEach(c=>{
+    const item=document.createElement('div');item.className='list-item';
+    item.onclick=()=>openDetail('commitment',c);
+    const today=new Date();today.setHours(0,0,0,0);
+    const daysUntil=c.expected_date?Math.ceil((new Date(c.expected_date)-today)/(1000*60*60*24)):null;
+    const dueSoonLabel=c.status==='Pending'&&daysUntil!==null&&daysUntil>=0&&daysUntil<=10?`<span style="font-size:10px;color:var(--amber);font-weight:600"> · Due in ${daysUntil}d</span>`:'';
+    item.innerHTML=`<div class="list-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div><div class="list-info"><div class="list-name">${c.description}</div><div class="list-sub">${c.expected_date?fmtDate(c.expected_date):'TBD'}${dueSoonLabel} · ${c.category||''}</div></div><div class="list-right"><div class="list-val ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div><div class="list-date"><span class="badge ${c.status==='Settled'?'badge-g':c.status==='Cancelled'?'badge-r':'badge-a'}">${c.status}</span></div></div><span class="list-arrow">›</span>`;
+    card.appendChild(item);
+  });
+  list.appendChild(card);
+}
 
 // ==============================================
 // TRANSACTIONS LIST
@@ -1561,124 +1606,356 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
     const recent=allTxns.slice(0,5);
     return `<div class="card" style="padding:10px 14px"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">Recent Transactions</div>${recent.map((t,i)=>`<div class="txn" onclick="switchTab('transactions')" style="padding:8px 0"><div class="txn-ico" style="background:${catColors[t.category]||'rgba(95,199,254,0.08)'};font-size:14px">${catIcons[t.category]||'💳'}</div><div class="txn-info"><div class="txn-name">${t.description||''}</div><div class="txn-cat">${t.category||''}</div></div><div class="txn-right"><div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base||0)}</div><div class="txn-date">${t.txn_date?fmtDate(t.txn_date):''}</div></div></div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions</div>'}</div>`;
   }
+  // New widgets
+  if(id==='nextloan'||id==='pendcmt'||id==='toptag') return buildWidgetExtra(id);
   return '';
 }
 
 // ==============================================
 // REPORTS
 // ==============================================
-function renderReports(){
+function getSelectedMonth(prefix){
+  const el=document.getElementById(prefix+'-month-sel');
+  return el?el.value:'';
+}
+function filterByMonth(txns,ym){
+  if(!ym) return txns;
+  return txns.filter(t=>t.txn_date&&t.txn_date.startsWith(ym));
+}
+function monthSelector(prefix,onchange){
+  const months=[...new Set(allTxns.map(t=>t.txn_date?t.txn_date.substring(0,7):null).filter(Boolean))].sort().reverse().slice(0,12);
+  const opts=months.map(m=>{const[yr,mo]=m.split('-');const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `<option value="${m}">${names[parseInt(mo)-1]} ${yr}</option>`;}).join('');
+  return `<select id="${prefix}-month-sel" class="field-select" style="width:110px;padding:5px 10px;font-size:12px" onchange="${onchange}">${'<option value="">All time</option>'}${opts}</select>`;
+}
+
+// ── 3 new dashboard widgets ──
+function buildWidgetExtra(id){
+  if(id==='nextloan'){
+    const today=new Date();
+    let next=null;
+    allLiabilities.forEach(l=>{
+      const pmtDay=25;
+      const d=new Date(today.getFullYear(),today.getMonth(),pmtDay);
+      if(d<today) d.setMonth(d.getMonth()+1);
+      if(!next||d<next.date) next={date:d,name:l.liability_name,amt:l.monthly_payment||0,ccy:l.loan_currency||'AED'};
+    });
+    if(!next) return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Next Loan Payment</div><div style="color:var(--text3);font-size:13px">No active loans</div></div>`;
+    const daysLeft=Math.ceil((next.date-today)/(1000*60*60*24));
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Next Loan Payment</div><div style="text-align:center;padding:6px 0 14px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">${next.name}</div><div style="font-size:28px;font-weight:800;color:var(--amber)">${fmtFull(next.amt)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${next.ccy} · ${next.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div></div><div style="text-align:center;padding-top:10px;border-top:1px solid var(--border)"><span style="font-size:13px;font-weight:600;color:${daysLeft<=7?'var(--red)':'var(--text2)'}">Due in ${daysLeft} day${daysLeft!==1?'s':''}</span></div></div>`;
+  }
+  if(id==='pendcmt'){
+    const pendIn=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Income').reduce((s,c)=>s+(c.amount_base||0),0);
+    const pendOut=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+    const net=pendIn-pendOut;
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Pending Commitments</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:rgba(102,234,185,0.08);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Incoming</div><div style="font-size:16px;font-weight:700;color:var(--green)">+${fmtFull(pendIn)}</div></div><div style="background:rgba(255,107,107,0.08);border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:var(--text3)">Outgoing</div><div style="font-size:16px;font-weight:700;color:var(--red)">-${fmtFull(pendOut)}</div></div></div><div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text3)">Net</span><span style="font-size:14px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}${fmtFull(net)}</span></div></div>`;
+  }
+  if(id==='toptag'){
+    const ym=new Date().toISOString().substring(0,7);
+    const byTag={};
+    allTxns.filter(t=>t.direction==='Expense'&&t.txn_date&&t.txn_date.startsWith(ym)).forEach(t=>{if(t.tags)byTag[t.tags]=(byTag[t.tags]||0)+(t.amount_base||0);});
+    const sorted=Object.entries(byTag).sort((a,b)=>b[1]-a[1]);
+    const total=sorted.reduce((s,[,v])=>s+v,0)||1;
+    const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa'];
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Spending by Tag · ${ym.split('-')[1]}/${ym.split('-')[0].slice(2)}</div>${sorted.slice(0,5).map(([tag,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${tag}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')||'<div style="color:var(--text3);font-size:12px">No tagged transactions this month</div>'}</div>`;
+  }
+  return '';
+}
+
+// ── REPORTS as widgets ──
+let rptEditMode=false;
+function toggleRptEdit(){
+  rptEditMode=!rptEditMode;
+  document.getElementById('edit-rpt-btn').textContent=rptEditMode?'Done':'Edit';
+  if(rptEditMode) renderRptEditMode();
+  else{ saveRptConfig(getRptConfig()); renderReports(); }
+}
+function renderRptEditMode(){
   const body=document.getElementById('reports-body');
-  const expTxns=allTxns.filter(t=>t.direction==='Expense');
-  const incTxns=allTxns.filter(t=>t.direction==='Income');
-  const byCat={};
-  expTxns.forEach(t=>{byCat[t.category]=(byCat[t.category]||0)+(t.amount_base||0);});
-  const catArr=Object.entries(byCat).map(([cat,val])=>({cat,val})).sort((a,b)=>b.val-a.val);
-  const catTotal=catArr.reduce((s,c)=>s+c.val,0);
-  const top4=catArr.slice(0,4);
+  const cfg=getRptConfig();
+  body.innerHTML='<div class="section-lbl">Drag to reorder · toggle to show/hide</div>';
+  cfg.sort((a,b)=>a.order-b.order).forEach((w,idx)=>{
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px;cursor:grab';
+    div.draggable=true; div.dataset.wid=w.id;
+    div.innerHTML=`<span style="font-size:18px;color:var(--text3)">⠿</span><span style="flex:1;font-size:14px;font-weight:500;color:var(--text)">${w.label}</span><label class="toggle-wrap"><input type="checkbox" class="toggle-inp" ${w.visible?'checked':''} onchange="toggleRptWidget('${w.id}',this.checked)"><span class="toggle-slider"></span></label>`;
+    div.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',w.id);div.style.opacity='0.5';});
+    div.addEventListener('dragend',()=>div.style.opacity='1');
+    div.addEventListener('dragover',e=>{e.preventDefault();div.style.borderColor='var(--teal)';});
+    div.addEventListener('dragleave',()=>div.style.borderColor='var(--border)');
+    div.addEventListener('drop',e=>{
+      e.preventDefault();div.style.borderColor='var(--border)';
+      const fromId=e.dataTransfer.getData('text/plain');
+      const cfg2=getRptConfig();
+      const fw=cfg2.find(x=>x.id===fromId), tw=cfg2.find(x=>x.id===w.id);
+      if(fw&&tw){const tmp=fw.order;fw.order=tw.order;tw.order=tmp;saveRptConfig(cfg2);}
+      renderRptEditMode();
+    });
+    body.appendChild(div);
+  });
+}
+function toggleRptWidget(id,visible){
+  const cfg=getRptConfig(); const w=cfg.find(x=>x.id===id);
+  if(w){w.visible=visible;saveRptConfig(cfg);}
+}
+
+function renderReports(){
+  if(rptEditMode){renderRptEditMode();return;}
+  const body=document.getElementById('reports-body');
+  const cfg=getRptConfig().sort((a,b)=>a.order-b.order).filter(w=>w.visible);
+  body.innerHTML='';
+
+  // YTD summary (always shown)
+  const ytdInc=allTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
+  const ytdExp=allTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
+  const ytdNet=ytdInc-ytdExp;
+  const ytdDiv=document.createElement('div');
+  ytdDiv.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;padding-top:4px';
+  ytdDiv.innerHTML=`<div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">YTD Income</div><div style="font-size:14px;font-weight:700;color:var(--green)">${(ytdInc/1000).toFixed(1)}K</div></div><div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">YTD Expenses</div><div style="font-size:14px;font-weight:700;color:var(--red)">${(ytdExp/1000).toFixed(1)}K</div></div><div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">Net</div><div style="font-size:14px;font-weight:700;color:${ytdNet>=0?'var(--green)':'var(--red)'}">${ytdNet>=0?'+':''}${(ytdNet/1000).toFixed(1)}K</div></div>`;
+  body.appendChild(ytdDiv);
+
+  cfg.forEach(w=>{
+    const sec=document.createElement('div');
+    const lbl=document.createElement('div');lbl.className='section-lbl';lbl.textContent=w.label;
+    sec.appendChild(lbl);
+    const card=buildRptWidget(w.id);
+    if(card) sec.appendChild(card);
+    body.appendChild(sec);
+  });
+
+  // AI tiles at bottom
+  const aiSec=document.createElement('div');
+  aiSec.innerHTML=`<div class="section-lbl">Ask AI</div><div class="rpt-grid">
+    <div class="rpt-card" onclick="quickSend('Show me my full balance sheet')"><div class="rpt-ico">📊</div><div class="rpt-name">Balance Sheet</div><div class="rpt-desc">Full snapshot</div></div>
+    <div class="rpt-card" onclick="quickSend('Show my income statement YTD 2026')"><div class="rpt-ico">📈</div><div class="rpt-name">Income Statement</div><div class="rpt-desc">P&L year to date</div></div>
+    <div class="rpt-card" onclick="quickSend('What is my free cash position?')"><div class="rpt-ico">💵</div><div class="rpt-name">Free Cash</div><div class="rpt-desc">After all obligations</div></div>
+    <div class="rpt-card" onclick="quickSend('What is my financial health check?')"><div class="rpt-ico">❤️</div><div class="rpt-name">Health Check</div><div class="rpt-desc">All KPIs</div></div>
+    <div class="rpt-card" onclick="quickSend('Summarize my loans and remaining balances')"><div class="rpt-ico">🏦</div><div class="rpt-name">Loan Detail</div><div class="rpt-desc">All debt</div></div>
+    <div class="rpt-card" onclick="quickSend('Show spending by subcategory for all categories')"><div class="rpt-ico">📂</div><div class="rpt-name">By Subcategory</div><div class="rpt-desc">Detailed view</div></div>
+  </div><div style="height:10px"></div>`;
+  body.appendChild(aiSec);
+}
+
+function buildRptWidget(id){
+  const card=document.createElement('div');card.className='card';card.style.padding='12px 14px';
+  const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa','#34d399','#f472b6'];
+  const fxUSD=3.67,fxCAD=2.70,fxEUR=4.02;
+  const toAED=(v,ccy)=>v*(ccy==='USD'?fxUSD:ccy==='CAD'?fxCAD:ccy==='EUR'?fxEUR:1);
+
+  if(id==='rpt-income'){
+    // Month selector header
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">Income Statement</span>${monthSelector('rpt-inc','buildRptIncome()')}`;
+    card.appendChild(hdr);
+    buildRptIncome(card);
+    return card;
+  }
+  if(id==='rpt-cashflow'){
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">Cash Flow</span>${monthSelector('rpt-cf','buildRptCashFlow()')}`;
+    card.appendChild(hdr);
+    buildRptCashFlow(card);
+    return card;
+  }
+  if(id==='rpt-balance'){
+    card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Balance Sheet</div>';
+    buildRptBalance(card);
+    return card;
+  }
+  if(id==='rpt-catspend'){
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Category</span>${monthSelector('rpt-cat','buildRptCatSpend()')}`;
+    card.appendChild(hdr);
+    buildRptCatSpend(card);
+    return card;
+  }
+  if(id==='rpt-tagspend'){
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px';
+    hdr.innerHTML=`<span style="font-size:12px;font-weight:600;color:var(--text)">By Tag</span>${monthSelector('rpt-tag','buildRptTagSpend()')}`;
+    card.appendChild(hdr);
+    buildRptTagSpend(card);
+    return card;
+  }
+  if(id==='rpt-methods'){
+    card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Payment Method Balances</div>';
+    buildRptMethods(card);
+    return card;
+  }
+  if(id==='rpt-loans'){
+    card.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">Loans</div>';
+    buildRptLoans(card);
+    return card;
+  }
+  return null;
+}
+
+function buildRptIncome(container){
+  const el=container||document.querySelector('#rpt-inc-body');
+  const ym=getSelectedMonth('rpt-inc');
+  let target=el;
+  if(!container){ target=document.getElementById('rpt-inc-body'); if(!target)return; target.innerHTML=''; }
+  const months=buildIncomeStatement();
+  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Income</span><span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
+  target.appendChild(hdr);
+  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  display.forEach(m=>{
+    const net=m.inc-m.exp;
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[parseInt(m.ym.split('-')[1])-1]}</span><span style="font-size:11px;font-weight:600;color:var(--green);text-align:right">${m.inc>0?fmtFull(m.inc):'-'}</span><span style="font-size:11px;font-weight:600;color:var(--red);text-align:right">${m.exp>0?fmtFull(m.exp):'-'}</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>`;
+    target.appendChild(row);
+  });
+  if(target.lastElementChild) target.lastElementChild.style.borderBottom='none';
+}
+function buildRptIncome(container){ // overload — renders into passed card
+  const ym=getSelectedMonth('rpt-inc');
+  const body=document.createElement('div'); body.id='rpt-inc-body';
+  container.appendChild(body);
+  const months=buildIncomeStatement();
+  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Income</span><span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
+  body.appendChild(hdr);
+  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  display.forEach(m=>{
+    const net=m.inc-m.exp;
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[parseInt(m.ym.split('-')[1])-1]}</span><span style="font-size:11px;font-weight:600;color:var(--green);text-align:right">${m.inc>0?fmtFull(m.inc):'-'}</span><span style="font-size:11px;font-weight:600;color:var(--red);text-align:right">${m.exp>0?fmtFull(m.exp):'-'}</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>`;
+    body.appendChild(row);
+  });
+  if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+}
+
+function buildRptCashFlow(container){
+  const ym=getSelectedMonth('rpt-cf');
+  const body=document.createElement('div');
+  container.appendChild(body);
+  const months=buildIncomeStatement();
+  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
+  const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Cash flow = operating (inc/exp) + investing (asset purchases) + financing (loan payments)
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Inflow</span><span style="font-size:10px;color:var(--text3);text-align:right">Outflow</span><span style="font-size:10px;color:var(--text3);text-align:right">Loan Pmts</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
+  body.appendChild(hdr);
+  const loanPmtTotal=allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
+  display.forEach(m=>{
+    const net=m.inc-m.exp;
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[parseInt(m.ym.split('-')[1])-1]}</span><span style="font-size:11px;color:var(--green);text-align:right">${fmtFull(m.inc)}</span><span style="font-size:11px;color:var(--red);text-align:right">${fmtFull(m.exp)}</span><span style="font-size:11px;color:var(--amber);text-align:right">${fmtFull(loanPmtTotal)}</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>`;
+    body.appendChild(row);
+  });
+  if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+}
+
+function buildRptBalance(container){
+  const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
+  const fxUSD=3.67;
+  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0)),0);
+  const netWorth=totalAssets-totalLiab;
+  // Assets breakdown
+  const byType={};
+  allAssets.forEach(a=>{byType[a.asset_type]=(byType[a.asset_type]||0)+(a.current_value_base||0);});
+  const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa'];
+  const assetTypes=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+  let html=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Assets</div>`;
+  assetTypes.forEach(([type,val],i)=>{
+    html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${type}</span><span style="font-weight:600;color:var(--text)">${fmtFull(val)}</span></div>`;
+  });
+  html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Assets</span><span style="font-size:13px;font-weight:700;color:var(--green)">${fmtFull(totalAssets)}</span></div>`;
+  html+=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">Liabilities</div>`;
+  allLiabilities.forEach(l=>{
+    const rem=l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0);
+    html+=`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--text2)">${l.liability_name}</span><span style="font-weight:600;color:var(--text)">${fmtFull(rem)} <span style="color:var(--text3);font-size:10px">(${l.loan_currency})</span></span></div>`;
+  });
+  html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid var(--border2);border-bottom:1px solid var(--border);margin:4px 0"><span style="font-size:12px;font-weight:700;color:var(--text)">Total Liabilities</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(totalLiab)}</span></div>`;
+  html+=`<div style="display:flex;justify-content:space-between;padding:10px 0 0"><span style="font-size:13px;font-weight:700;color:var(--text)">Net Worth</span><span style="font-size:15px;font-weight:800;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</span></div>`;
+  const div=document.createElement('div');div.innerHTML=html;container.appendChild(div);
+}
+
+function buildRptCatSpend(container){
+  const ym=getSelectedMonth('rpt-cat');
+  const txns=ym?allTxns.filter(t=>t.direction==='Expense'&&t.txn_date&&t.txn_date.startsWith(ym)):allTxns.filter(t=>t.direction==='Expense');
+  const byCat={};txns.forEach(t=>{byCat[t.category]=(byCat[t.category]||0)+(t.amount_base||0);});
+  const arr=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const total=arr.reduce((s,[,v])=>s+v,0)||1;
   const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa','#34d399','#f472b6'];
   const CIRC=439.82;
-  const donutSlices=top4.map(({val},i)=>({arc:(val/Math.max(catTotal,1))*CIRC,color:colors[i]}));
+  const top4=arr.slice(0,4);
   let offset=CIRC*0.25;
-  const donutSVG=donutSlices.map(({arc,color})=>{
-    const s=`<circle cx="100" cy="100" r="70" fill="none" stroke="${color}" stroke-width="28" stroke-dasharray="${Math.max(0,arc-4).toFixed(1)} ${CIRC}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="butt"/>`;
-    offset-=arc; return s;
-  }).join('');
-  const byTag={};
-  expTxns.forEach(t=>{if(t.tags){byTag[t.tags]=(byTag[t.tags]||0)+(t.amount_base||0);}});
-  const tagArr=Object.entries(byTag).map(([tag,val])=>({tag,val})).sort((a,b)=>b.val-a.val);
-  const tagTotal=tagArr.reduce((s,t)=>s+t.val,0);
-  const byMethod={};
-  allTxns.forEach(t=>{if(t.txn_method){if(!byMethod[t.txn_method])byMethod[t.txn_method]={'inc':0,out:0};if(t.direction==='Income')byMethod[t.txn_method]['inc']+=(t.amount_base||0);else byMethod[t.txn_method].out+=(t.amount_base||0);}});
-  const methodArr=Object.entries(byMethod).map(([m,v])=>({m,inc:v['inc'],out:v.out})).sort((a,b)=>b.out-a.out);
-  const monthMap={};
-  allTxns.forEach(t=>{if(!t.txn_date)return;const ym=t.txn_date.substring(0,7);if(!monthMap[ym])monthMap[ym]={ym,inc:0,exp:0};if(t.direction==='Income')monthMap[ym].inc+=(t.amount_base||0);else monthMap[ym].exp+=(t.amount_base||0);});
-  const months=Object.values(monthMap).sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-6);
-  const maxMonth=Math.max(...months.map(m=>Math.max(m.inc,m.exp)),1);
-  const ytdInc=incTxns.reduce((s,t)=>s+(t.amount_base||0),0);
-  const ytdExp=expTxns.reduce((s,t)=>s+(t.amount_base||0),0);
-  const ytdNet=ytdInc-ytdExp;
-  body.innerHTML=`
-    <div class="section-lbl" style="margin-top:4px">YTD Summary</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">Income</div><div style="font-size:14px;font-weight:700;color:var(--green)">${(ytdInc/1000).toFixed(1)}K</div></div>
-      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">Expenses</div><div style="font-size:14px;font-weight:700;color:var(--red)">${(ytdExp/1000).toFixed(1)}K</div></div>
-      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:var(--text3)">Net</div><div style="font-size:14px;font-weight:700;color:${ytdNet>=0?'var(--green)':'var(--red)'}">${ytdNet>=0?'+':'−'}${(Math.abs(ytdNet)/1000).toFixed(1)}K</div></div>
-    </div>
-    <div class="section-lbl">Monthly Cash Flow</div>
-    <div class="card" style="padding:12px 14px">
-      <div style="display:flex;align-items:flex-end;gap:4px;height:70px;margin-bottom:5px">
-        ${months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px"><div title="Income" style="width:100%;background:rgba(102,234,185,0.45);border-radius:3px 3px 0 0;height:${((m.inc/maxMonth)*66).toFixed(0)}px"></div></div>`).join('')}
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:4px;height:70px;margin-bottom:6px">
-        ${months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px"><div title="Expenses" style="width:100%;background:rgba(255,107,107,0.55);border-radius:3px 3px 0 0;height:${((m.exp/maxMonth)*66).toFixed(0)}px"></div></div>`).join('')}
-      </div>
-      <div style="display:flex;gap:4px"><div>${months.map(m=>`<span style="font-size:9px;color:var(--text3)">${m.ym.substring(5)} </span>`).join('')}</div></div>
-      <div style="display:flex;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;background:rgba(102,234,185,0.5);border-radius:2px"></div>Income</div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)"><div style="width:10px;height:10px;background:rgba(255,107,107,0.5);border-radius:2px"></div>Expenses</div>
-      </div>
-    </div>
-    <div class="section-lbl">Spending by Category</div>
-    <div class="card">
-      <svg viewBox="0 0 200 200" width="130" height="130" style="display:block;margin:0 auto 14px;transform:rotate(-90deg)">
-        <circle cx="100" cy="100" r="70" fill="none" stroke="var(--card2)" stroke-width="28"/>
-        ${donutSVG}
-        <text x="100" y="96" text-anchor="middle" fill="var(--text)" font-size="15" font-weight="800" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">${(catTotal/1000).toFixed(0)}K</text>
-        <text x="100" y="111" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">AED spent</text>
-      </svg>
-      ${catArr.slice(0,8).map(({cat,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/Math.max(catTotal,1)*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}
-      ${catArr.length>8?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px;cursor:pointer" onclick="quickSend('Show me full spending by all categories')">+ ${catArr.length-8} more →</div>`:''}
-    </div>
-    <div class="section-lbl">Spending by Tag</div>
-    <div class="card">
-      ${tagArr.length?tagArr.map(({tag,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${tag}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/Math.max(tagTotal,1)*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join(''):'<div style="color:var(--text3);font-size:12px">No tagged transactions</div>'}
-    </div>
-    <div class="section-lbl">Payment Method Activity</div>
-    <div class="card" style="padding:10px 14px">
-      <div style="display:grid;grid-template-columns:1fr 68px 68px;gap:4px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-size:10px;color:var(--text3)">Method</span><span style="font-size:10px;color:var(--text3);text-align:right">Spent</span><span style="font-size:10px;color:var(--text3);text-align:right">Received</span></div>
-      ${methodArr.slice(0,12).map(({m,inc,out})=>`<div style="display:grid;grid-template-columns:1fr 68px 68px;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><span style="font-size:11px;font-weight:600;color:${out>0?'var(--red)':'var(--text3)'};text-align:right">${out>0?fmtFull(out):'-'}</span><span style="font-size:11px;font-weight:600;color:${inc>0?'var(--green)':'var(--text3)'};text-align:right">${inc>0?fmtFull(inc):'-'}</span></div>`).join('')}
-    </div>
-    <div class="section-lbl">Loans Snapshot</div>
-    <div class="card" style="padding:10px 14px">
-      ${allLiabilities.length?allLiabilities.map(l=>{const rem=l.loan_currency==='USD'?(l.remaining_principal||0)*3.67:(l.remaining_principal||0);const orig=l.loan_currency==='USD'?(l.original_principal||0)*3.67:(l.original_principal||0);const pct=orig>0?Math.min(100,((orig-rem)/orig)*100):0;return `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:var(--text)">${l.liability_name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(rem)} ${l.loan_currency}</span></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px"><span>${l.interest_type||''} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.remaining_pmts||0} pmts</span><span>AED ${fmtFull(l.monthly_payment||0)}/mo</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">${pct.toFixed(1)}% paid</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:12px">No active loans</div>'}
-    </div>
-    <div class="section-lbl">Income Statement</div>
-    <div class="card" style="padding:10px 14px">
-      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)">
-        <span style="font-size:10px;color:var(--text3)">Month</span>
-        <span style="font-size:10px;color:var(--text3);text-align:right">Income</span>
-        <span style="font-size:10px;color:var(--text3);text-align:right">Expenses</span>
-        <span style="font-size:10px;color:var(--text3);text-align:right">Net</span>
-      </div>
-      ${buildIncomeStatement().slice(-6).map(m=>{
-        const net=m.inc-m.exp;
-        const mo=m.ym.split('-');
-        const moName=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo[1])-1];
-        return `<div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
-          <span style="font-size:11px;font-weight:600;color:var(--text2)">${moName}</span>
-          <span style="font-size:11px;font-weight:600;color:var(--green);text-align:right">${m.inc>0?fmtFull(m.inc):'-'}</span>
-          <span style="font-size:11px;font-weight:600;color:var(--red);text-align:right">${m.exp>0?fmtFull(m.exp):'-'}</span>
-          <span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="section-lbl">AI Reports</div>
-    <div class="rpt-grid">
-      <div class="rpt-card" onclick="quickSend('Show me my balance sheet - assets, liabilities, net worth')"><div class="rpt-ico">📊</div><div class="rpt-name">Balance Sheet</div><div class="rpt-desc">Assets vs liabilities</div></div>
-      <div class="rpt-card" onclick="quickSend('Show me my full income statement year to date 2026')"><div class="rpt-ico">📈</div><div class="rpt-name">Income Statement</div><div class="rpt-desc">P&L year to date</div></div>
-      <div class="rpt-card" onclick="quickSend('What is my free cash position after all commitments and loan payments?')"><div class="rpt-ico">💵</div><div class="rpt-name">Free Cash</div><div class="rpt-desc">After all obligations</div></div>
-      <div class="rpt-card" onclick="quickSend('Break down my cash flow month by month for 2026')"><div class="rpt-ico">💸</div><div class="rpt-name">Cash Flow</div><div class="rpt-desc">Monthly in vs out</div></div>
-      <div class="rpt-card" onclick="quickSend('Summarize all my loans, remaining balances, monthly payments and interest')"><div class="rpt-ico">🏦</div><div class="rpt-name">Loan Detail</div><div class="rpt-desc">All debt & interest</div></div>
-      <div class="rpt-card" onclick="quickSend('Show me spending breakdown by tag - Home, Rabie, Nour, Kids etc')"><div class="rpt-ico">🏷</div><div class="rpt-name">By Tag</div><div class="rpt-desc">Spend per person/group</div></div>
-      <div class="rpt-card" onclick="quickSend('Show me spending by subcategory for each main category')"><div class="rpt-ico">📂</div><div class="rpt-name">By Subcategory</div><div class="rpt-desc">Detailed category view</div></div>
-      <div class="rpt-card" onclick="quickSend('What is my financial health - savings rate, DTI, DSCR, cash runway?')"><div class="rpt-ico">❤️</div><div class="rpt-name">Health Check</div><div class="rpt-desc">All KPIs at a glance</div></div>
-    </div>
-    <div style="height:10px"></div>`;
+  const donutSVG=top4.map(([,val],i)=>{const arc=(val/total)*CIRC;const s=`<circle cx="100" cy="100" r="60" fill="none" stroke="${colors[i]}" stroke-width="24" stroke-dasharray="${Math.max(0,arc-4).toFixed(1)} ${CIRC}" stroke-dashoffset="${offset.toFixed(1)}" stroke-linecap="butt"/>`;offset-=arc;return s;}).join('');
+  const body=document.createElement('div');
+  body.innerHTML=`<svg viewBox="0 0 200 200" width="110" height="110" style="display:block;margin:0 auto 12px;transform:rotate(-90deg)"><circle cx="100" cy="100" r="60" fill="none" stroke="var(--card2)" stroke-width="24"/>${donutSVG}<text x="100" y="95" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="800" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">${(total/1000).toFixed(0)}K</text><text x="100" y="110" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="Outfit,sans-serif" transform="rotate(90,100,100)">AED</text></svg>${arr.slice(0,8).map(([cat,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}`;
+  container.appendChild(body);
 }
-// ==============================================
-// PROFILE
-// ==============================================
+
+function buildRptTagSpend(container){
+  const ym=getSelectedMonth('rpt-tag');
+  const txns=ym?allTxns.filter(t=>t.direction==='Expense'&&t.txn_date&&t.txn_date.startsWith(ym)):allTxns.filter(t=>t.direction==='Expense');
+  const byTag={};txns.forEach(t=>{if(t.tags)byTag[t.tags]=(byTag[t.tags]||0)+(t.amount_base||0);});
+  const arr=Object.entries(byTag).sort((a,b)=>b[1]-a[1]);
+  const total=arr.reduce((s,[,v])=>s+v,0)||1;
+  const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa'];
+  const body=document.createElement('div');
+  body.innerHTML=arr.length?arr.map(([tag,val],i)=>`<div class="srow"><div class="sdot" style="background:${colors[i%colors.length]}"></div><div class="sinfo"><div class="sname">${tag}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i%colors.length]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join(''):'<div style="color:var(--text3);font-size:12px">No tagged transactions</div>';
+  container.appendChild(body);
+}
+
+function buildRptMethods(container){
+  const body=document.createElement('div');
+  // Running balance: opening bal + all inflows - all outflows
+  const byMethod={};
+  allAccounts.forEach(a=>{byMethod[a.method_name]={open:a.open_bal_base||0,in:0,out:0,ccy:a.currency_code};});
+  allTxns.forEach(t=>{
+    if(!t.txn_method) return;
+    if(!byMethod[t.txn_method]) byMethod[t.txn_method]={open:0,in:0,out:0,ccy:'AED'};
+    if(t.direction==='Income') byMethod[t.txn_method].in+=(t.amount_base||0);
+    else byMethod[t.txn_method].out+=(t.amount_base||0);
+  });
+  const arr=Object.entries(byMethod).map(([m,v])=>({m,open:v.open,in:v.in,out:v.out,close:v.open+v.in-v.out,ccy:v.ccy})).sort((a,b)=>Math.abs(b.close)-Math.abs(a.close));
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:1fr 62px 62px 68px;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Account</span><span style="font-size:10px;color:var(--text3);text-align:right">Opening</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span><span style="font-size:10px;color:var(--text3);text-align:right">Balance</span>';
+  body.appendChild(hdr);
+  arr.slice(0,12).forEach(({m,open,in:inc,out,close,ccy})=>{
+    const net=inc-out;
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:1fr 62px 62px 68px;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center';
+    row.innerHTML=`<span style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><span style="font-size:10px;color:var(--text3);text-align:right">${fmtFull(open)}</span><span style="font-size:11px;font-weight:600;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span><span style="font-size:11px;font-weight:700;color:${close>=0?'var(--text)':'var(--red)'};text-align:right">${fmtFull(close)}</span>`;
+    body.appendChild(row);
+  });
+  if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+  container.appendChild(body);
+}
+
+function buildRptLoans(container){
+  const fxUSD=3.67;
+  const body=document.createElement('div');
+  if(!allLiabilities.length){body.innerHTML='<div style="color:var(--text3);font-size:12px">No active loans</div>';container.appendChild(body);return;}
+  allLiabilities.forEach(l=>{
+    const remNative=l.remaining_principal||0;
+    const remAED=l.loan_currency==='USD'?remNative*fxUSD:remNative;
+    const origAED=l.loan_currency==='USD'?(l.original_principal||0)*fxUSD:(l.original_principal||0);
+    const pct=origAED>0?Math.min(100,((origAED-remAED)/origAED)*100):0;
+    const div=document.createElement('div');
+    div.style.cssText='padding:10px 0;border-bottom:1px solid var(--border)';
+    div.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:600;color:var(--text)">${l.liability_name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">${fmtFull(remNative)} <span style="font-size:10px;color:var(--text3)">${l.loan_currency}</span></span></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:5px"><span>${l.interest_type||''} · ${l.annual_int_rate?((l.annual_int_rate*100).toFixed(2)+'%'):'0%'} · ${l.remaining_pmts||0} pmts</span><span>AED ${fmtFull(remAED)} equiv</span></div><div class="bar-bg"><div class="bar-fill" style="width:${pct.toFixed(1)}%"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">${pct.toFixed(1)}% paid</div>`;
+    body.appendChild(div);
+  });
+  if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+  container.appendChild(body);
+}
+
+
 function renderProfile(){
   const body=document.getElementById('profile-body');
   const name=localStorage.getItem('qeema_name')||'Rabie';
@@ -2173,20 +2450,7 @@ function buildIncomeStatement(){
 // FEATURE 3: NOTIFICATION BADGES
 // =============================================
 function updateNotifications(){
-  const today = new Date();
-  const in7days = new Date(); in7days.setDate(today.getDate()+7);
-  const dueSoon = allCommitments.filter(c=>{
-    if(c.status!=='Pending') return false;
-    if(!c.expected_date) return false;
-    const d = new Date(c.expected_date);
-    return d>=today && d<=in7days;
-  });
-  const badge = document.getElementById('d-cmt-badge');
-  if(badge){
-    badge.style.display = dueSoon.length>0 ? 'inline' : 'none';
-    badge.textContent = dueSoon.length;
-  }
-  // Also update tab bar if commitments tab exists
+  // No badge — "Due in 10 days" filter tab handles this in commitments screen
 }
 
 // =============================================
