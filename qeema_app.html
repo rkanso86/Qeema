@@ -350,7 +350,7 @@ body{display:flex;justify-content:center;align-items:center}
 
 <!-- STATUS BAR REMOVED - iPhone shows native status bar -->
 
-<!-- ═══════════ DRAWER ═══════════ -->
+<!-- =========== DRAWER =========== -->
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
@@ -379,7 +379,7 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="drawer-footer" id="drawer-footer">Qeema · AED · March 2026</div>
 </div>
 
-<!-- ═══════════ MANAGEMENT SCREENS ═══════════ -->
+<!-- =========== MANAGEMENT SCREENS =========== -->
 
 <!-- COMMITMENTS -->
 <div class="mgmt-screen" id="mgmt-commitments">
@@ -459,7 +459,7 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="detail-body" id="detail-body"></div>
 </div>
 
-<!-- ═══════════ DASHBOARD ═══════════ -->
+<!-- =========== DASHBOARD =========== -->
 <div class="screen active" id="screen-dashboard">
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
@@ -474,7 +474,7 @@ body{display:flex;justify-content:center;align-items:center}
   </div>
 </div>
 
-<!-- ═══════════ AI CHAT ═══════════ -->
+<!-- =========== AI CHAT =========== -->
 <div class="screen" id="screen-chat">
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
@@ -506,7 +506,7 @@ body{display:flex;justify-content:center;align-items:center}
   </div>
 </div>
 
-<!-- ═══════════ TRANSACTIONS ═══════════ -->
+<!-- =========== TRANSACTIONS =========== -->
 <div class="screen" id="screen-transactions">
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
@@ -546,7 +546,7 @@ body{display:flex;justify-content:center;align-items:center}
   </div>
 </div>
 
-<!-- ═══════════ REPORTS ═══════════ -->
+<!-- =========== REPORTS =========== -->
 <div class="screen" id="screen-reports">
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
@@ -557,7 +557,7 @@ body{display:flex;justify-content:center;align-items:center}
   <div class="scroll" style="padding-top:0" id="reports-body"></div>
 </div>
 
-<!-- ═══════════ PROFILE ═══════════ -->
+<!-- =========== PROFILE =========== -->
 <div class="screen" id="screen-profile">
   <div class="u-header">
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
@@ -580,9 +580,9 @@ body{display:flex;justify-content:center;align-items:center}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-// ══════════════════════════════════════════════
+// ==============================================
 // CONSTANTS & STATE
-// ══════════════════════════════════════════════
+// ==============================================
 const SB_URL = 'https://svqqwxpfnazbvsyzakpr.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2cXF3eHBmbmF6YnZzeXpha3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDY1NTEsImV4cCI6MjA4OTkyMjU1MX0.cXeFP6L_KSWgEej4LlKmJu-AGpOkXlt6CJThiOINXns';
 const HDR = { 'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation' };
@@ -603,15 +603,15 @@ let recognition=null, isListening=false;
 const txnF={ dir:'',cat:'',tag:'',method:'',ccy:'',core:'',from:'',to:'',min:'',max:'' };
 const cmtF={ status:'',dir:'',cat:'',tag:'',from:'',to:'' };
 
-// Dashboard widget config — stored in localStorage
+// Dashboard widget config - stored in localStorage
 const WIDGET_DEFS = [
-  { id:'networth',   label:'Net Worth',              default:true },
-  { id:'kpi',        label:'KPI Scorecard',           default:true },
-  { id:'spending',   label:'Spending Breakdown',      default:true },
-  { id:'upcoming',   label:'Upcoming Commitments',    default:true },
-  { id:'freecash',   label:'Free Cash',               default:true },
-  { id:'avsliab',    label:'Assets vs Liabilities',   default:true },
-  { id:'recent',     label:'Recent Transactions',     default:true },
+  { id:'networth',   label:'Net Worth',              'default':true },
+  { id:'kpi',        label:'KPI Scorecard',           'default':true },
+  { id:'spending',   label:'Spending Breakdown',      'default':true },
+  { id:'upcoming',   label:'Upcoming Commitments',    'default':true },
+  { id:'freecash',   label:'Free Cash',               'default':true },
+  { id:'avsliab',    label:'Assets vs Liabilities',   'default':true },
+  { id:'recent',     label:'Recent Transactions',     'default':true },
 ];
 
 function loadWidgetConfig() {
@@ -621,7 +621,7 @@ function saveWidgetConfig(cfg) { localStorage.setItem('qeema_widgets', JSON.stri
 function getWidgetConfig() {
   const saved = loadWidgetConfig();
   if (saved) return saved;
-  return WIDGET_DEFS.map((w,i) => ({ ...w, visible:w.default, order:i }));
+  return WIDGET_DEFS.map((w,i) => ({ ...w, visible:w['default'], order:i }));
 }
 
 // Verified baseline from Qeema v65
@@ -635,9 +635,9 @@ const BASE = {
   expJan:44944,expFeb:49127,expMar:53740,
 };
 
-// ══════════════════════════════════════════════
+// ==============================================
 // SUPABASE HELPERS
-// ══════════════════════════════════════════════
+// ==============================================
 async function sbGet(table,params=''){
   const r=await fetch(`${SB_URL}/rest/v1/${table}?${params}`,{headers:HDR});
   return r.json();
@@ -654,9 +654,9 @@ async function sbDelete(table,filter){
   await fetch(`${SB_URL}/rest/v1/${table}?${filter}`,{method:'DELETE',headers:HDR});
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // FORMATTERS
-// ══════════════════════════════════════════════
+// ==============================================
 const fmt=n=>Math.abs(n)>=1000?(n/1000).toFixed(2)+'K':Number(n).toFixed(2);
 const fmtFull=n=>Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -679,14 +679,14 @@ const catColors={
   'Travel':'rgba(161,139,252,0.12)','Entertainment':'rgba(255,107,107,0.10)',
 };
 
-// ══════════════════════════════════════════════
+// ==============================================
 // STATUS TIME
-// ══════════════════════════════════════════════
+// ==============================================
 // status time removed
 
-// ══════════════════════════════════════════════
+// ==============================================
 // TOAST
-// ══════════════════════════════════════════════
+// ==============================================
 function showToast(msg,isErr=false){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='toast'+(isErr?' err':'');
@@ -694,9 +694,9 @@ function showToast(msg,isErr=false){
   setTimeout(()=>t.classList.remove('show'),2800);
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // TAB SWITCHING
-// ══════════════════════════════════════════════
+// ==============================================
 function switchTab(tab){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -706,9 +706,9 @@ function switchTab(tab){
   if(tab==='profile') renderProfile();
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // DRAWER
-// ══════════════════════════════════════════════
+// ==============================================
 function openDrawer(){
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
@@ -718,9 +718,9 @@ function closeDrawer(){
   document.getElementById('drawer-overlay').classList.remove('open');
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // MGMT SCREENS
-// ══════════════════════════════════════════════
+// ==============================================
 function openMgmt(type){
   currentMgmt=type;
   document.getElementById('mgmt-'+type).classList.add('open');
@@ -858,14 +858,14 @@ async function saveFx(inp){
   showToast('✓ '+inp.dataset.code+' rate updated');
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // LOAN SCHEDULE
-// ══════════════════════════════════════════════
+// ==============================================
 async function openLoanSchedule(liabilityId, liabilityName){
   document.getElementById('schedule-title').textContent=liabilityName;
   openMgmt('loan-schedule');
   const list=document.getElementById('mgmt-schedule-list');
-  list.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px;text-align:center">Loading…</div>';
+  list.innerHTML='<div style="color:var(--text3);font-size:12px;padding:20px;text-align:center">Loading...</div>';
   const data=await sbGet('loan_schedule',`liability_id=eq.${liabilityId}&order=payment_no.asc`);
   if(!data||!data.length){
     list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center">No schedule found.</div>';
@@ -976,9 +976,9 @@ function generateSchedule(liabilityId, loanName, principal, rate, termMonths, mo
   return rows;
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // DETAIL PANEL
-// ══════════════════════════════════════════════
+// ==============================================
 function openDetail(type,item){
   currentDetailType=type; currentDetailItem=item;
   const isNew=!item;
@@ -986,7 +986,7 @@ function openDetail(type,item){
   const title=document.getElementById('detail-title');
   const body=document.getElementById('detail-body');
   title.textContent=(isNew?'New ':'Edit ')+type.charAt(0).toUpperCase()+type.slice(1);
-  body.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">Loading…</div>';
+  body.innerHTML='<div style="color:var(--text3);font-size:13px;padding:20px 0">Loading...</div>';
   panel.style.display='flex';
   setTimeout(()=>{
     panel.classList.add('open');
@@ -1007,7 +1007,7 @@ function closeDetail(){
 function field(label,id,value,type='text',options=null){
   if(options){
     const opts=options.map(o=>`<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('');
-    return `<div class="field-row"><div class="field-label">${label}</div><select class="field-select" id="df-${id}"><option value="">Select…</option>${opts}</select></div>`;
+    return `<div class="field-row"><div class="field-label">${label}</div><select class="field-select" id="df-${id}"><option value="">Select...</option>${opts}</select></div>`;
   }
   return `<div class="field-row"><div class="field-label">${label}</div><input class="field-input" id="df-${id}" type="${type}" value="${value??''}"></div>`;
 }
@@ -1213,9 +1213,9 @@ async function delItem(table,filter){
   closeDetail();
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // FILTER & SORT ENGINE
-// ══════════════════════════════════════════════
+// ==============================================
 function selectChip(el,group){
   el.parentElement.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
@@ -1363,9 +1363,9 @@ function renderFilteredCmts(q=''){
 }
 function clearCmtFilter(k){cmtF[k]='';renderFilteredCmts('');}
 
-// ══════════════════════════════════════════════
+// ==============================================
 // TRANSACTIONS LIST
-// ══════════════════════════════════════════════
+// ==============================================
 function renderTxnList(txns){
   currentTxnList=txns;
   const ti=txns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
@@ -1383,9 +1383,9 @@ function renderTxnList(txns){
 function openTxnDetail(i){openDetail('transaction',currentTxnList[i]);}
 function renderTransactions(){applyTxnFilters();}
 
-// ══════════════════════════════════════════════
+// ==============================================
 // DASHBOARD
-// ══════════════════════════════════════════════
+// ==============================================
 function toggleDashEdit(){
   dashEditMode=!dashEditMode;
   document.getElementById('edit-dash-btn').textContent=dashEditMode?'Done':'Edit';
@@ -1498,14 +1498,14 @@ function buildWidget(id,liquidCash,newInc,newExp){
   }
   if(id==='recent'){
     const recent=allTxns.slice(0,5);
-    return `<div class="card" style="padding:10px 14px"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">Recent Transactions</div>${recent.map((t,i)=>`<div class="txn" onclick="switchTab('transactions')" style="padding:8px 0"><div class="txn-ico" style="background:${catColors[t.category]||'rgba(95,199,254,0.08)';font-size:14px">${catIcons[t.category]||'💳'}</div><div class="txn-info"><div class="txn-name">${t.description||''}</div><div class="txn-cat">${t.category||''}</div></div><div class="txn-right"><div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base||0)}</div><div class="txn-date">${t.txn_date?fmtDate(t.txn_date):''}</div></div></div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions</div>'}</div>`;
+    return `<div class="card" style="padding:10px 14px"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">Recent Transactions</div>${recent.map((t,i)=>`<div class="txn" onclick="switchTab('transactions')" style="padding:8px 0"><div class="txn-ico" style="background:${catColors[t.category]||'rgba(95,199,254,0.08)'};font-size:14px">${catIcons[t.category]||'💳'}</div><div class="txn-info"><div class="txn-name">${t.description||''}</div><div class="txn-cat">${t.category||''}</div></div><div class="txn-right"><div class="txn-amt ${t.direction==='Income'?'amt-in':'amt-out'}">${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base||0)}</div><div class="txn-date">${t.txn_date?fmtDate(t.txn_date):''}</div></div></div>`).join('')||'<div style="color:var(--text3);font-size:12px;padding:8px 0">No transactions</div>'}</div>`;
   }
   return '';
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // REPORTS
-// ══════════════════════════════════════════════
+// ==============================================
 function renderReports(){
   const body=document.getElementById('reports-body');
   const expTxns=allTxns.filter(t=>t.direction==='Expense');
@@ -1528,8 +1528,8 @@ function renderReports(){
   const tagArr=Object.entries(byTag).map(([tag,val])=>({tag,val})).sort((a,b)=>b.val-a.val);
   const tagTotal=tagArr.reduce((s,t)=>s+t.val,0);
   const byMethod={};
-  allTxns.forEach(t=>{if(t.txn_method){if(!byMethod[t.txn_method])byMethod[t.txn_method]={in:0,out:0};if(t.direction==='Income')byMethod[t.txn_method].in+=(t.amount_base||0);else byMethod[t.txn_method].out+=(t.amount_base||0);}});
-  const methodArr=Object.entries(byMethod).map(([m,v])=>({m,in:v.in,out:v.out})).sort((a,b)=>b.out-a.out);
+  allTxns.forEach(t=>{if(t.txn_method){if(!byMethod[t.txn_method])byMethod[t.txn_method]={'inc':0,out:0};if(t.direction==='Income')byMethod[t.txn_method]['inc']+=(t.amount_base||0);else byMethod[t.txn_method].out+=(t.amount_base||0);}});
+  const methodArr=Object.entries(byMethod).map(([m,v])=>({m,inc:v['inc'],out:v.out})).sort((a,b)=>b.out-a.out);
   const monthMap={};
   allTxns.forEach(t=>{if(!t.txn_date)return;const ym=t.txn_date.substring(0,7);if(!monthMap[ym])monthMap[ym]={ym,inc:0,exp:0};if(t.direction==='Income')monthMap[ym].inc+=(t.amount_base||0);else monthMap[ym].exp+=(t.amount_base||0);});
   const months=Object.values(monthMap).sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-6);
@@ -1576,7 +1576,7 @@ function renderReports(){
     <div class="section-lbl">Payment Method Activity</div>
     <div class="card" style="padding:10px 14px">
       <div style="display:grid;grid-template-columns:1fr 68px 68px;gap:4px;padding-bottom:8px;border-bottom:1px solid var(--border)"><span style="font-size:10px;color:var(--text3)">Method</span><span style="font-size:10px;color:var(--text3);text-align:right">Spent</span><span style="font-size:10px;color:var(--text3);text-align:right">Received</span></div>
-      ${methodArr.slice(0,12).map(({m,in:inc,out})=>`<div style="display:grid;grid-template-columns:1fr 68px 68px;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><span style="font-size:11px;font-weight:600;color:${out>0?'var(--red)':'var(--text3)'};text-align:right">${out>0?fmtFull(out):'—'}</span><span style="font-size:11px;font-weight:600;color:${inc>0?'var(--green)':'var(--text3)'};text-align:right">${inc>0?fmtFull(inc):'—'}</span></div>`).join('')}
+      ${methodArr.slice(0,12).map(({m,inc,out})=>`<div style="display:grid;grid-template-columns:1fr 68px 68px;gap:4px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center"><span style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><span style="font-size:11px;font-weight:600;color:${out>0?'var(--red)':'var(--text3)'};text-align:right">${out>0?fmtFull(out):'-'}</span><span style="font-size:11px;font-weight:600;color:${inc>0?'var(--green)':'var(--text3)'};text-align:right">${inc>0?fmtFull(inc):'-'}</span></div>`).join('')}
     </div>
     <div class="section-lbl">Loans Snapshot</div>
     <div class="card" style="padding:10px 14px">
@@ -1584,20 +1584,20 @@ function renderReports(){
     </div>
     <div class="section-lbl">AI Reports</div>
     <div class="rpt-grid">
-      <div class="rpt-card" onclick="quickSend('Show me my balance sheet — assets, liabilities, net worth')"><div class="rpt-ico">📊</div><div class="rpt-name">Balance Sheet</div><div class="rpt-desc">Assets vs liabilities</div></div>
+      <div class="rpt-card" onclick="quickSend('Show me my balance sheet - assets, liabilities, net worth')"><div class="rpt-ico">📊</div><div class="rpt-name">Balance Sheet</div><div class="rpt-desc">Assets vs liabilities</div></div>
       <div class="rpt-card" onclick="quickSend('Show me my full income statement year to date 2026')"><div class="rpt-ico">📈</div><div class="rpt-name">Income Statement</div><div class="rpt-desc">P&L year to date</div></div>
       <div class="rpt-card" onclick="quickSend('What is my free cash position after all commitments and loan payments?')"><div class="rpt-ico">💵</div><div class="rpt-name">Free Cash</div><div class="rpt-desc">After all obligations</div></div>
       <div class="rpt-card" onclick="quickSend('Break down my cash flow month by month for 2026')"><div class="rpt-ico">💸</div><div class="rpt-name">Cash Flow</div><div class="rpt-desc">Monthly in vs out</div></div>
       <div class="rpt-card" onclick="quickSend('Summarize all my loans, remaining balances, monthly payments and interest')"><div class="rpt-ico">🏦</div><div class="rpt-name">Loan Detail</div><div class="rpt-desc">All debt & interest</div></div>
-      <div class="rpt-card" onclick="quickSend('Show me spending breakdown by tag — Home, Rabie, Nour, Kids etc')"><div class="rpt-ico">🏷</div><div class="rpt-name">By Tag</div><div class="rpt-desc">Spend per person/group</div></div>
+      <div class="rpt-card" onclick="quickSend('Show me spending breakdown by tag - Home, Rabie, Nour, Kids etc')"><div class="rpt-ico">🏷</div><div class="rpt-name">By Tag</div><div class="rpt-desc">Spend per person/group</div></div>
       <div class="rpt-card" onclick="quickSend('Show me spending by subcategory for each main category')"><div class="rpt-ico">📂</div><div class="rpt-name">By Subcategory</div><div class="rpt-desc">Detailed category view</div></div>
-      <div class="rpt-card" onclick="quickSend('What is my financial health — savings rate, DTI, DSCR, cash runway?')"><div class="rpt-ico">❤️</div><div class="rpt-name">Health Check</div><div class="rpt-desc">All KPIs at a glance</div></div>
+      <div class="rpt-card" onclick="quickSend('What is my financial health - savings rate, DTI, DSCR, cash runway?')"><div class="rpt-ico">❤️</div><div class="rpt-name">Health Check</div><div class="rpt-desc">All KPIs at a glance</div></div>
     </div>
     <div style="height:10px"></div>`;
 }
-// ══════════════════════════════════════════════
+// ==============================================
 // PROFILE
-// ══════════════════════════════════════════════
+// ==============================================
 function renderProfile(){
   const body=document.getElementById('profile-body');
   const name=localStorage.getItem('qeema_name')||'Rabie';
@@ -1662,18 +1662,18 @@ function toggleTheme(isLight){
 }
 async function confirmReset(){
   if(!confirm('This will permanently delete ALL your data. Are you absolutely sure?'))return;
-  if(!confirm('Last chance — this cannot be undone. Continue?'))return;
+  if(!confirm('Last chance - this cannot be undone. Continue?'))return;
   await Promise.all([sbDelete('transactions','id=gt.0'),sbDelete('commitments','id=gt.0')]);
   allTxns=[]; allCommitments=[];
   renderDashboard(); applyTxnFilters();
   showToast('All data cleared');
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // EXCEL EXPORT
-// ══════════════════════════════════════════════
+// ==============================================
 async function exportToExcel(){
-  showToast('⏳ Preparing export…');
+  showToast('⏳ Preparing export...');
   try{
     const [txns,cmts,assets,libs,accounts,tags,sched]=await Promise.all([
       sbGet('transactions','order=txn_date.asc&limit=1000'),
@@ -1711,9 +1711,9 @@ async function exportToExcel(){
   }catch(e){showToast('⚠ Export failed: '+e.message,true);}
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // DRAWER COUNTS
-// ══════════════════════════════════════════════
+// ==============================================
 async function updateCounts(){
   document.getElementById('d-txn-count').textContent=allTxns.length;
   document.getElementById('d-cmt-count').textContent=allCommitments.filter(c=>c.status==='Pending').length;
@@ -1725,9 +1725,9 @@ async function updateCounts(){
   }catch(e){}
 }
 
-// ══════════════════════════════════════════════
+// ==============================================
 // AI CHAT + QUERY ENGINE
-// ══════════════════════════════════════════════
+// ==============================================
 async function executeQuery(spec){
   try{
     const q=JSON.parse(spec);
@@ -1740,13 +1740,13 @@ async function executeQuery(spec){
   }catch(e){return{error:e.message};}
 }
 
-const SYSTEM=`You are Qeema AI — your personal CFO. You replace the Excel model entirely. Rabie never needs to go back to the spreadsheet. You handle every data entry, every setting, every master list, every financial question.
+const SYSTEM=`You are Qeema AI - your personal CFO. You replace the Excel model entirely. Rabie never needs to go back to the spreadsheet. You handle every data entry, every setting, every master list, every financial question.
 
 TODAY: March 24, 2026. Rabie is based in Dubai, UAE. Base currency: AED.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------------
 RABIE'S FINANCIAL SNAPSHOT (Qeema v65)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------------
 Salary: AED 75,500/mo (Kearney, ending) → FTI starts April 2026 @ AED 88,692/mo
 FTI sign-on: USD 50,000 (AED 183,500) due Apr 25 2026
 FTI year-end bonus 2026: AED 400,000 due Jan 2027
@@ -1758,16 +1758,16 @@ Beirut Mortgage: USD 755,297 · flat 0% · to Dad · 44 pmts · ends Nov 2029
 KPIs: Savings 17.2%✓ | DTI 28.8%✓ | DSCR 2.87x✓ | Runway 0.15mo✗
 FX: USD=3.67, EUR=4.02, GBP=4.65, CAD=2.70, SAR=0.98, LBP=0.000041
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------------
 ACCOUNTS: ENBD AED Account, EI AED Account, WIO AED Account, WIO Credit Card, Tabby Card, Tabby Pay Later, LBC CAD Credit Card, ENBD USD Account, RBC CAD Account, Cash - AED, Cash - USD, Cash - LBP, Cash - EUR, Rania's Savings Account, Splitwise Account, Nour Account
 TAGS: Home, Rabie, Nour, Kids, Lilia, Nawwar, Maid, Parents, Insurance, Lebanon Apartment, Other, Jana
 EXPENSE CATEGORIES: Business Services, Clothing, Debt, Dining, Education, Entertainment, Fees & Charges, Gifts/Donations, Groceries, Healthcare, Household Care, Household Items, Housing, Insurance, Investments, Kids, Miscellaneous, Personal, Taxes, Transportation, Travel, Utilities
 INCOME CATEGORIES: Bonus, Cashback, Debt Income, Freelance Income, Gifts-Children, Gifts-General, Interest Income, Investments Income, Item Sale, Monthly Salary, Reimbursement, Rental Income, Returned Purchase, Severance
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DATABASE QUERY TOOL — USE FOR ALL DATA QUESTIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For ANY question about specific amounts, spending by tag/category/method/date — ALWAYS query live database first. NEVER answer from memory.
+-------------------------------------
+DATABASE QUERY TOOL - USE FOR ALL DATA QUESTIONS
+-------------------------------------
+For ANY question about specific amounts, spending by tag/category/method/date - ALWAYS query live database first. NEVER answer from memory.
 
 Format: [[QUERY:{"table":"transactions","filters":["tags=eq.Nour","txn_date=gte.2026-03-01","txn_date=lte.2026-03-31","direction=eq.Expense"],"select":"description,amount_base,category,txn_date","order":"amount_base.desc","limit":50}]]
 
@@ -1775,9 +1775,9 @@ TABLES: transactions, commitments, assets, liabilities, accounts, loan_schedule,
 KEY FIELDS: transactions(txn_date,direction,description,category,subcategory,amount_base,currency_code,txn_method,tags,core_flag), commitments(expected_date,amount_base,direction,category,status,tags,monthly_k), assets(asset_name,asset_type,current_value_base,purchase_price_base), liabilities(liability_name,remaining_principal,monthly_payment,annual_int_rate,loan_currency,remaining_pmts)
 OPERATORS: eq.VALUE, gte.VALUE, lte.VALUE, ilike.*VALUE*, is.null, neq.VALUE
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LOGGING — 8 OPERATION TYPES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------------
+LOGGING - 8 OPERATION TYPES
+-------------------------------------
 [[TXN:{"description":"","category":"","subcategory":"","amount_original":0,"currency_code":"AED","amount_base":0,"direction":"Expense","txn_method":"ENBD AED Account","tags":"Home","core_flag":"Core","val_recog_type":"Immediate","installment_months":0,"prepaid_mo":null,"txn_date":"2026-03-24","notes":""}]]
 [[CMT:{"description":"","expected_date":"2026-04-01","amount_original":0,"currency_code":"AED","amount_base":0,"direction":"Expense","category":"","subcategory":"","tags":"Home","core_flag":"Core","status":"Pending","monthly_k":0,"notes":""}]]
 [[AST:{"asset_id":"","asset_name":"","asset_type":"Property","purchase_date":"2026-03-24","purchase_price":0,"purchase_ccy":"AED","purchase_price_base":0,"current_value":0,"current_value_ccy":"AED","current_value_base":0,"has_liability":"N","liability_id":null,"location":"Dubai, UAE","notes":""}]]
@@ -1794,9 +1794,9 @@ LOGGING — 8 OPERATION TYPES
 val_recog_type: "Spread" for Housing/Insurance annual payments, "Immediate" for everything else.
 For BNPL: set installment_months to number of installments (e.g. 4 for Tabby).
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VISUAL RESPONSES — ALWAYS USE FOR NUMBERS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------------
+VISUAL RESPONSES - ALWAYS USE FOR NUMBERS
+-------------------------------------
 ANY response with 3+ numbers → use visual block. NEVER raw text lists.
 
 [[VIS_TABLE:{"title":"...","headers":["Col1","Col2"],"rows":[{"label":"Row","values":["1,000.00","2,000.00"],"type":"normal|pos|neg|total|result"}]}]]
@@ -1831,7 +1831,7 @@ async function callClaude(userMsg){
   if(qm){
     const results=await executeQuery(qm[1]);
     const count=Array.isArray(results)?results.length:0;
-    chatHistory.push({role:'assistant',content:'[Querying live database…]'});
+    chatHistory.push({role:'assistant',content:'[Querying live database...]'});
     chatHistory.push({role:'user',content:`Database returned ${count} rows: ${JSON.stringify(Array.isArray(results)?results.slice(0,100):results)}\n\nAnswer the original question using ONLY this real data. Be concise. Use visual blocks.`});
     let r2,d2;
     r2=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1500,system:SYSTEM,messages:chatHistory})});
@@ -1890,7 +1890,7 @@ function renderVisual(type,json){
     }else if(type==='VIS_KPI'){
       wrap.innerHTML=`<div class="vis-title">${d.title||''}</div><div class="vis-kpi-grid"></div>`;
       const grid=wrap.querySelector('.vis-kpi-grid');
-      (d.items||[]).forEach(({label,value,color})=>{const k=document.createElement('div');k.className='vis-kpi';k.innerHTML=`<div class="vis-kpi-lbl">${label}</div><div class="vis-kpi-val" style="color:${color||'var(--text)'}">${value}</div>`;grid.appendChild(k);});
+      (d.items||[]).forEach(({label,value,color})=>{const k=document.createElement('div');k.className='vis-kpi';k.innerHTML='<div class="vis-kpi-lbl">'+label+'</div><div class="vis-kpi-val" style="color:'+(color||'var(--text)')+'">'+(value||'')+'</div>';grid.appendChild(k);});
     }
     return wrap;
   }catch(e){return null;}
@@ -1926,11 +1926,11 @@ async function handleSend(){
     if(ops.TRF){await saveFromAI(ops.TRF[1],'transfers','✓ Transfer logged');}
     if(ops.ACC){await saveFromAI(ops.ACC[1],'accounts','✓ Account added');}
     if(ops.TAG){await saveFromAI(ops.TAG[1],'tags','✓ Tag added');}
-    if(ops.ASM){try{const o=JSON.parse(ops.ASM[1]);await sbPatch('assumptions',`parameter=eq.${encodeURIComponent(o.parameter)}`,{value_num:o.value_num,value_text:o.value_text,notes:o.notes});showToast('✓ Assumption updated');}catch(e){}}
-    if(ops.FXR){try{const o=JSON.parse(ops.FXR[1]);await sbPatch('fx_rates',`currency_code=eq.${o.currency_code}`,{rate_to_base:o.rate_to_base});showToast('✓ FX rate updated');}catch(e){}}
-    if(ops.SETTLE){try{const o=JSON.parse(ops.SETTLE[1]);await sbPatch('commitments',`description=eq.${encodeURIComponent(o.description)}`,{status:'Settled'});const c=allCommitments.find(x=>x.description===o.description);if(c)c.status='Settled';showToast('✓ Commitment settled');renderDashboard();}catch(e){}}
-    if(ops.UPD_AST){try{const o=JSON.parse(ops.UPD_AST[1]);await sbPatch('assets',`asset_id=eq.${o.asset_id}`,{current_value:o.current_value,current_value_base:o.current_value_base});const a=allAssets.find(x=>x.asset_id===o.asset_id);if(a){a.current_value=o.current_value;a.current_value_base=o.current_value_base;}showToast('✓ Asset updated');renderDashboard();}catch(e){}}
-    if(ops.UPD_LIB){try{const o=JSON.parse(ops.UPD_LIB[1]);const l=allLiabilities.find(x=>x.liability_id===o.liability_id);if(l){const np=Math.max(0,(l.remaining_principal||0)-o.payment_amount);const nm=Math.max(0,(l.remaining_pmts||0)-1);await sbPatch('liabilities',`liability_id=eq.${o.liability_id}`,{remaining_principal:np,remaining_pmts:nm});l.remaining_principal=np;l.remaining_pmts=nm;showToast('✓ Loan payment recorded');renderDashboard();}}catch(e){}}
+    if(ops.ASM){try{const o=JSON.parse(ops.ASM[1]);await sbPatch('assumptions','parameter=eq.'+encodeURIComponent(o.parameter),{value_num:o.value_num,value_text:o.value_text,notes:o.notes});showToast('✓ Assumption updated');}catch(e){}}
+    if(ops.FXR){try{const o=JSON.parse(ops.FXR[1]);await sbPatch('fx_rates','currency_code=eq.'+o.currency_code,{rate_to_base:o.rate_to_base});showToast('✓ FX rate updated');}catch(e){}}
+    if(ops.SETTLE){try{const o=JSON.parse(ops.SETTLE[1]);await sbPatch('commitments','description=eq.'+encodeURIComponent(o.description),{status:'Settled'});const c=allCommitments.find(x=>x.description===o.description);if(c)c.status='Settled';showToast('✓ Commitment settled');renderDashboard();}catch(e){}}
+    if(ops.UPD_AST){try{const o=JSON.parse(ops.UPD_AST[1]);await sbPatch('assets','asset_id=eq.'+o.asset_id,{current_value:o.current_value,current_value_base:o.current_value_base});const a=allAssets.find(x=>x.asset_id===o.asset_id);if(a){a.current_value=o.current_value;a.current_value_base=o.current_value_base;}showToast('✓ Asset updated');renderDashboard();}catch(e){}}
+    if(ops.UPD_LIB){try{const o=JSON.parse(ops.UPD_LIB[1]);const l=allLiabilities.find(x=>x.liability_id===o.liability_id);if(l){const np=Math.max(0,(l.remaining_principal||0)-o.payment_amount);const nm=Math.max(0,(l.remaining_pmts||0)-1);await sbPatch('liabilities','liability_id=eq.'+o.liability_id,{remaining_principal:np,remaining_pmts:nm});l.remaining_principal=np;l.remaining_pmts=nm;showToast('✓ Loan payment recorded');renderDashboard();}}catch(e){}}
     updateCounts();
   }catch(e){removeTyping();addMsg('⚠ '+e.message+'<br><span style="color:var(--text3);font-size:11px">Check your connection and try again.</span>',false);}
 }
@@ -1945,10 +1945,10 @@ function toggleVoice(){
   if(!SR){showToast('Voice not supported',true);return;}
   if(isListening){recognition.stop();return;}
   recognition=new SR();recognition.lang='en-US';recognition.continuous=false;recognition.interimResults=false;
-  recognition.onstart=()=>{isListening=true;document.getElementById('mic-btn').classList.add('listening');document.getElementById('chat-input').placeholder='Listening…';};
+  recognition.onstart=()=>{isListening=true;document.getElementById('mic-btn').classList.add('listening');document.getElementById('chat-input').placeholder='Listening...';};
   recognition.onresult=e=>{document.getElementById('chat-input').value=e.results[0][0].transcript;setTimeout(()=>handleSend(),300);};
   recognition.onerror=e=>{showToast('Voice error: '+e.error,true);};
-  recognition.onend=()=>{isListening=false;document.getElementById('mic-btn').classList.remove('listening');document.getElementById('chat-input').placeholder='Ask your CFO anything or log a transaction…';};
+  recognition.onend=()=>{isListening=false;document.getElementById('mic-btn').classList.remove('listening');document.getElementById('chat-input').placeholder='Ask your CFO anything or log a transaction...';};
   recognition.start();
 }
 
@@ -1957,11 +1957,11 @@ const ci=document.getElementById('chat-input');
 ci.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleSend();}});
 ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min(ci.scrollHeight,100)+'px';});
 
-// ══════════════════════════════════════════════
+// ==============================================
 // LOAD & INIT
-// ══════════════════════════════════════════════
+// ==============================================
 async function loadAll(){
-  // Show app immediately — don't wait for data
+  // Show app immediately - don't wait for data
   const theme=localStorage.getItem('qeema_theme')||'dark';
   document.documentElement.setAttribute('data-theme',theme);
   const h=new Date().getHours();
@@ -1971,7 +1971,7 @@ async function loadAll(){
   document.getElementById('loading').style.display='none';
   renderDashboard();
 
-  // Load data in background — prioritise transactions first
+  // Load data in background - prioritise transactions first
   try{
     // Load critical data first (fast queries)
     [allLiabilities,allAssets]=await Promise.all([
@@ -1989,7 +1989,7 @@ async function loadAll(){
     applyTxnFilters();
     updateCounts();
   }catch(e){
-    showToast('⚠ Connection issue — some data may not load',true);
+    showToast('⚠ Connection issue - some data may not load',true);
   }
 }
 loadAll();
