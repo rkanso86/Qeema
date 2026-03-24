@@ -479,6 +479,16 @@ body{display:flex;justify-content:center;align-items:center}
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
+  <!-- Global search -->
+  <div class="search-wrap">
+    <div class="search-bar">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="#5a7080" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="#5a7080" stroke-width="2" stroke-linecap="round"/></svg>
+      <input type="text" id="global-search" placeholder="Search transactions, commitments, assets…" oninput="globalSearch(this.value)" onkeydown="if(event.key==='Enter'&&this.value.trim()){quickSend('Search for: '+this.value);this.value=''}">
+      <span id="global-search-clear" style="display:none;color:var(--text3);cursor:pointer;font-size:16px" onclick="clearGlobalSearch()">×</span>
+    </div>
+  </div>
+  <!-- Global search results overlay -->
+  <div id="global-results" style="display:none;position:absolute;top:120px;left:16px;right:16px;background:var(--bg3);border:1px solid var(--border2);border-radius:16px;z-index:100;max-height:320px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.4)"></div>
   <div class="scroll" id="dash-scroll">
     <div id="dash-widgets"></div>
   </div>
@@ -1475,28 +1485,39 @@ function renderDashboard(){
   const cfg=getWidgetConfig().sort((a,b)=>a.order-b.order).filter(w=>w.visible);
   const el=document.getElementById('dash-widgets');
   el.innerHTML='';
-  // New txns delta
-  const newTxns=allTxns.filter(t=>{const d=new Date(t.txn_date);return d>=new Date('2026-03-24');});
-  const newInc=newTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
-  const newExp=newTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
-  const liquidCash=BASE.liquidCash+newInc-newExp;
+
+  // Live calculations from DB
+  const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
+  const fxUSD=3.67; // fallback, ideally from fx_rates
+  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0)),0);
+  const netWorth=totalAssets-totalLiab;
+
+  // Liquid cash = sum of cash/bank accounts by transaction net
+  const cashInflow=allTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
+  const cashOutflow=allTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
+  // Use account opening balances + transaction delta
+  const openingBal=allAccounts.filter(a=>['Bank','Cash','Savings'].includes(a.account_type)).reduce((s,a)=>s+(a.open_bal_base||0),0);
+  const liquidCash=openingBal+(cashInflow-cashOutflow);
+
   cfg.forEach(w=>{
     const div=document.createElement('div');div.className='widget';
-    div.innerHTML=buildWidget(w.id,liquidCash,newInc,newExp);
+    div.innerHTML=buildWidget(w.id,liquidCash,totalAssets,totalLiab,netWorth);
     el.appendChild(div);
   });
 }
 
-function buildWidget(id,liquidCash,newInc,newExp){
+function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   if(id==='networth'){
+    const nwColor=netWorth>=0?'var(--green)':'var(--red)';
+    const maxBar=Math.max(totalAssets,totalLiab,1);
     return `<div class="hero">
       <div class="nw-lbl">Net Worth</div>
-      <div class="nw-val" style="color:var(--red)">−AED ${fmtFull(Math.abs(BASE.netWorth))}</div>
-      <div class="nw-sub">YTD change: −${fmtFull(Math.abs(BASE.nwChange))} · improving with FTI</div>
+      <div class="nw-val" style="color:${nwColor}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</div>
+      <div class="nw-sub">${totalAssets>0?'Live from your assets & liabilities':'Loading...'}</div>
       <div style="margin-top:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text3)">Assets</span><span style="font-size:12px;font-weight:700;color:var(--green)">AED ${fmtFull(BASE.totalAssets)}</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--text3)">Liabilities</span><span style="font-size:12px;font-weight:700;color:var(--red)">AED ${fmtFull(BASE.totalLiab)}</span></div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,(BASE.totalAssets/BASE.totalLiab*100)).toFixed(1)}%"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text3)">Assets</span><span style="font-size:12px;font-weight:700;color:var(--green)">AED ${fmtFull(totalAssets)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--text3)">Liabilities</span><span style="font-size:12px;font-weight:700;color:var(--red)">AED ${fmtFull(totalLiab)}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,totalLiab>0?(totalAssets/totalLiab*100):100).toFixed(1)}%"></div></div>
       </div>
     </div>`;
   }
@@ -1529,16 +1550,12 @@ function buildWidget(id,liquidCash,newInc,newExp){
     return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Upcoming Commitments</div>${pend.map(c=>`<div class="upcoming"><div class="up-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div><div class="up-info"><div class="up-name">${c.description}</div><div class="up-date">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''}</div></div><div class="up-amt ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div></div>`).join('')||'<div style="color:var(--text3);font-size:12px">No pending commitments</div>'}</div>`;
   }
   if(id==='freecash'){
-    const loanPmts=allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
-    const runway=(loanPmts>0?(liquidCash/loanPmts):0).toFixed(1);
     const color=liquidCash>50000?'var(--green)':liquidCash>10000?'var(--amber)':'var(--red)';
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Free Cash</div><div style="text-align:center;padding:8px 0 16px"><div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(liquidCash)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">AED · Liquid Cash Available</div></div><div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)"><div style="text-align:center"><div style="font-size:10px;color:var(--text3)">Monthly Loan Pmts</div><div style="font-size:13px;font-weight:600;color:var(--red)">−${fmtFull(loanPmts)}</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--text3)">Cash Runway</div><div style="font-size:13px;font-weight:600;color:${parseFloat(runway)>=3?'var(--green)':'var(--red)'}">${runway} mo</div></div></div></div>`;
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Free Cash</div><div style="text-align:center;padding:8px 0 12px"><div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(liquidCash)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">AED · Liquid Cash Available</div></div></div>`;
   }
   if(id==='avsliab'){
-    const assetTotal=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0)||BASE.totalAssets;
-    const liabTotal=allLiabilities.reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*3.67:(l.remaining_principal||0)),0)||BASE.totalLiab;
-    const maxVal=Math.max(assetTotal,liabTotal,1);
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Assets vs Liabilities</div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Assets</span><span style="color:var(--green);font-weight:600">AED ${fmtFull(assetTotal)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(assetTotal/maxVal*100).toFixed(1)}%"></div></div></div><div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Liabilities</span><span style="color:var(--red);font-weight:600">AED ${fmtFull(liabTotal)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(liabTotal/maxVal*100).toFixed(1)}%;background:var(--red)"></div></div></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text3)">Net Worth</span><span style="font-size:14px;font-weight:700;color:var(--red)">−AED ${fmtFull(Math.abs(assetTotal-liabTotal))}</span></div></div>`;
+    const maxVal=Math.max(totalAssets,totalLiab,1);
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Assets vs Liabilities</div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Assets</span><span style="color:var(--green);font-weight:600">AED ${fmtFull(totalAssets)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalAssets/maxVal*100).toFixed(1)}%"></div></div></div><div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Liabilities</span><span style="color:var(--red);font-weight:600">AED ${fmtFull(totalLiab)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalLiab/maxVal*100).toFixed(1)}%;background:var(--red)"></div></div></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text3)">Net Worth</span><span style="font-size:14px;font-weight:700;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</span></div></div>`;
   }
   if(id==='recent'){
     const recent=allTxns.slice(0,5);
@@ -1774,6 +1791,98 @@ async function exportToExcel(){
 // ==============================================
 // DRAWER COUNTS
 // ==============================================
+// =============================================
+// GLOBAL SEARCH
+// =============================================
+function globalSearch(q){
+  const clearBtn = document.getElementById('global-search-clear');
+  const resultsEl = document.getElementById('global-results');
+  if(clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  if(!q || q.length < 2){ resultsEl.style.display='none'; return; }
+  const lower = q.toLowerCase();
+
+  // Search transactions
+  const txnHits = allTxns.filter(t=>
+    (t.description||'').toLowerCase().includes(lower) ||
+    (t.category||'').toLowerCase().includes(lower) ||
+    (t.tags||'').toLowerCase().includes(lower)
+  ).slice(0,5);
+
+  // Search commitments
+  const cmtHits = allCommitments.filter(c=>
+    (c.description||'').toLowerCase().includes(lower) ||
+    (c.category||'').toLowerCase().includes(lower)
+  ).slice(0,3);
+
+  // Search assets
+  const astHits = allAssets.filter(a=>
+    (a.asset_name||'').toLowerCase().includes(lower) ||
+    (a.asset_type||'').toLowerCase().includes(lower)
+  ).slice(0,3);
+
+  if(!txnHits.length && !cmtHits.length && !astHits.length){
+    resultsEl.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center">No results — tap Enter to ask AI</div>';
+    resultsEl.style.display='block';
+    return;
+  }
+
+  let html = '';
+  if(txnHits.length){
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px 4px">Transactions</div>`;
+    txnHits.forEach(t=>{
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="clearGlobalSearch();switchTab('transactions')">
+        <div style="width:32px;height:32px;border-radius:9px;background:${catColors[t.category]||'rgba(95,199,254,0.08)'};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${catIcons[t.category]||'💳'}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description||''}</div><div style="font-size:11px;color:var(--text3)">${t.category||''} · ${t.txn_date?fmtDate(t.txn_date):''}</div></div>
+        <div style="font-size:12px;font-weight:700;color:${t.direction==='Income'?'var(--green)':'var(--red)'};flex-shrink:0">${t.direction==='Income'?'+':'−'}${fmtFull(t.amount_base||0)}</div>
+      </div>`;
+    });
+  }
+  if(cmtHits.length){
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px 4px">Commitments</div>`;
+    cmtHits.forEach(c=>{
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="clearGlobalSearch();openMgmt('commitments')">
+        <div style="width:32px;height:32px;border-radius:9px;background:rgba(255,179,71,0.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📅</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.description||''}</div><div style="font-size:11px;color:var(--text3)">${c.category||''} · <span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div></div>
+        <div style="font-size:12px;font-weight:700;color:${c.direction==='Income'?'var(--green)':'var(--red)'};flex-shrink:0">${c.direction==='Income'?'+':'−'}${fmtFull(c.amount_base||0)}</div>
+      </div>`;
+    });
+  }
+  if(astHits.length){
+    html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px 4px">Assets</div>`;
+    astHits.forEach(a=>{
+      const ico={Property:'🏠',Vehicle:'🚗',Jewelry:'💍',Investment:'📈',Cash:'💵',Other:'📦'}[a.asset_type]||'📦';
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="clearGlobalSearch();openMgmt('assets')">
+        <div style="width:32px;height:32px;border-radius:9px;background:rgba(102,234,185,0.10);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${ico}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text)">${a.asset_name||''}</div><div style="font-size:11px;color:var(--text3)">${a.asset_type||''}</div></div>
+        <div style="font-size:12px;font-weight:700;color:var(--green);flex-shrink:0">${fmtFull(a.current_value_base||0)}</div>
+      </div>`;
+    });
+  }
+  // Ask AI option
+  html += `<div style="padding:10px 14px;cursor:pointer;text-align:center;font-size:12px;color:var(--teal);font-weight:600" onclick="const v=document.getElementById('global-search').value;clearGlobalSearch();quickSend('Search for: '+v)">Ask AI about "${q}" →</div>`;
+
+  resultsEl.innerHTML = html;
+  resultsEl.style.display = 'block';
+}
+
+function clearGlobalSearch(){
+  const inp = document.getElementById('global-search');
+  const res = document.getElementById('global-results');
+  const clr = document.getElementById('global-search-clear');
+  if(inp) inp.value = '';
+  if(res) res.style.display = 'none';
+  if(clr) clr.style.display = 'none';
+}
+
+// Close global search when tapping elsewhere
+document.addEventListener('click', e=>{
+  const res = document.getElementById('global-results');
+  const inp = document.getElementById('global-search');
+  if(res && !res.contains(e.target) && e.target !== inp){
+    res.style.display = 'none';
+  }
+});
+
 async function updateCounts(){
   document.getElementById('d-txn-count').textContent=allTxns.length;
   document.getElementById('d-cmt-count').textContent=allCommitments.filter(c=>c.status==='Pending').length;
