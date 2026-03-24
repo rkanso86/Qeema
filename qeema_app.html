@@ -815,6 +815,7 @@ function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('screen-'+tab).classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='transactions') renderTransactions();
   if(tab==='reports') renderReports();
   if(tab==='profile') renderProfile();
 }
@@ -1574,12 +1575,18 @@ function renderDashboard(){
   const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
   // (fx_rates table loaded on demand — use constants as they match DB)
 
-  // ── Net Worth: Assets - Liabilities (AED equiv) ──
+  // ── Net Worth: Assets - All Liabilities (matching Excel balance sheet) ──
   const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const totalLiab=allLiabilities.reduce((s,l)=>{
-    const rem=l.remaining_principal||0;
-    return s+(l.remaining_principal||0); // principal used as-is per model convention
+  // Loan obligations (AED-equivalent)
+  const fxM={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
+  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0)*(fxM[l.loan_currency]||1),0);
+  // Credit card and BNPL negative balances = money owed
+  const ccBnplLiab=allAccounts.filter(a=>['CreditCard','BNPL'].includes(a.account_type)).reduce((s,a)=>{
+    const b=a.open_bal_base||0; return s+(b<0?Math.abs(b):0);
   },0);
+  // Pending commitment outflows = committed future spend
+  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+  const totalLiab=loanLiab+ccBnplLiab+pendingLiab;
   const netWorth=totalAssets-totalLiab;
 
   // ── Liquid Cash: opening balances of selected accounts + net transactions ──
@@ -1600,7 +1607,9 @@ function renderDashboard(){
 
   cfg.forEach(w=>{
     const div=document.createElement('div');div.className='widget';
-    div.innerHTML=buildWidget(w.id,liquidCash,totalAssets,totalLiab,netWorth);
+    const whtml=buildWidget(w.id,liquidCash,totalAssets,totalLiab,netWorth);
+    if(whtml) div.innerHTML=whtml;
+    else div.innerHTML='<div class="card" style="color:var(--text3);font-size:12px;padding:16px;text-align:center">Widget loading...</div>';
     el.appendChild(div);
   });
 }
@@ -1895,26 +1904,35 @@ function buildRptIncome(container){ // overload — renders into passed card
 }
 
 function buildRptCashFlow(container){
-  const ym=getSelectedMonth('rpt-cf');
-  const body=document.createElement('div');
-  container.appendChild(body);
-  const months=buildIncomeStatement();
-  const display=ym?months.filter(m=>m.ym===ym):months.slice(-6);
+  // Cash Flow = Core inflows/outflows only (val_recog_type=Immediate or by txn_date)
+  // Separate from Income Statement which uses value recognition date
   const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  // Cash flow = operating (inc/exp) + investing (asset purchases) + financing (loan payments)
-  const hdr=document.createElement('div');
-  hdr.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
-  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">Inflow</span><span style="font-size:10px;color:var(--text3);text-align:right">Outflow</span><span style="font-size:10px;color:var(--text3);text-align:right">Loan Pmts</span><span style="font-size:10px;color:var(--text3);text-align:right">Net</span>';
-  body.appendChild(hdr);
+  const body=document.createElement('div');
+  // Build monthly cash flows from actual transaction dates (cash basis)
+  const monthMap={};
+  allTxns.forEach(t=>{
+    if(!t.txn_date) return;
+    const ym=t.txn_date.substring(0,7);
+    if(!monthMap[ym]) monthMap[ym]={ym,inflow:0,outflow:0};
+    if(t.direction==='Income') monthMap[ym].inflow+=(t.amount_base||0);
+    else monthMap[ym].outflow+=(t.amount_base||0);
+  });
   const loanPmtTotal=allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
-  display.forEach(m=>{
-    const net=m.inc-m.exp;
+  const months=Object.values(monthMap).sort((a,b)=>a.ym.localeCompare(b.ym)).slice(-6);
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr 1fr;gap:4px;padding-bottom:7px;border-bottom:1px solid var(--border)';
+  hdr.innerHTML='<span style="font-size:10px;color:var(--text3)">Month</span><span style="font-size:10px;color:var(--text3);text-align:right">In</span><span style="font-size:10px;color:var(--text3);text-align:right">Out</span><span style="font-size:10px;color:var(--text3);text-align:right">Loans</span><span style="font-size:10px;color:var(--text3);text-align:right">Net Cash</span>';
+  body.appendChild(hdr);
+  months.forEach(m=>{
+    const net=m.inflow-m.outflow-loanPmtTotal;
+    const mo=parseInt(m.ym.split('-')[1])-1;
     const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:52px 1fr 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
-    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[parseInt(m.ym.split('-')[1])-1]}</span><span style="font-size:11px;color:var(--green);text-align:right">${fmtFull(m.inc)}</span><span style="font-size:11px;color:var(--red);text-align:right">${fmtFull(m.exp)}</span><span style="font-size:11px;color:var(--amber);text-align:right">${fmtFull(loanPmtTotal)}</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${fmtFull(net)}</span>`;
+    row.style.cssText='display:grid;grid-template-columns:44px 1fr 1fr 1fr 1fr;gap:4px;padding:7px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<span style="font-size:11px;font-weight:600;color:var(--text2)">${names[mo]}</span><span style="font-size:10px;color:var(--green);text-align:right">${(m.inflow/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--red);text-align:right">${(m.outflow/1000).toFixed(1)}K</span><span style="font-size:10px;color:var(--amber);text-align:right">${(loanPmtTotal/1000).toFixed(1)}K</span><span style="font-size:11px;font-weight:700;color:${net>=0?'var(--green)':'var(--red)'};text-align:right">${net>=0?'+':''}${(net/1000).toFixed(1)}K</span>`;
     body.appendChild(row);
   });
   if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
+  container.appendChild(body);
 }
 
 function buildRptBalance(container){
@@ -1980,21 +1998,31 @@ function buildRptTagSpend(container){
 
 function buildRptMethods(container){
   const body=document.createElement('div');
+  const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
+  // Build per-account: use opening balance in native ccy + native txn flows
   const byMethod={};
-  allAccounts.forEach(a=>{byMethod[a.method_name]={open:a.open_bal_base||0,inc:0,out:0,ccy:a.currency_code};});
+  allAccounts.forEach(a=>{
+    byMethod[a.method_name]={
+      open_native: a.open_bal_original||a.open_bal_base||0,
+      inc_native:0, out_native:0,
+      ccy: a.currency_code||'AED'
+    };
+  });
   allTxns.forEach(t=>{
     if(!t.txn_method) return;
-    if(!byMethod[t.txn_method]) byMethod[t.txn_method]={open:0,inc:0,out:0,ccy:'AED'};
-    if(t.direction==='Income') byMethod[t.txn_method].inc+=(t.amount_base||0);
-    else byMethod[t.txn_method].out+=(t.amount_base||0);
+    if(!byMethod[t.txn_method]) byMethod[t.txn_method]={open_native:0,inc_native:0,out_native:0,ccy:'AED'};
+    const native=t.amount_original||t.amount_base||0;
+    if(t.direction==='Income') byMethod[t.txn_method].inc_native+=native;
+    else byMethod[t.txn_method].out_native+=native;
   });
   const arr=Object.entries(byMethod)
-    .map(([m,v])=>({m,bal:v.open+v.inc-v.out,ccy:v.ccy}))
-    .sort((a,b)=>Math.abs(b.bal)-Math.abs(a.bal));
-  arr.slice(0,14).forEach(({m,bal,ccy})=>{
+    .map(([m,v])=>({m, bal:v.open_native+v.inc_native-v.out_native, ccy:v.ccy}))
+    .sort((a,b)=>Math.abs(b.bal*(fxMap[b.ccy]||1))-Math.abs(a.bal*(fxMap[a.ccy]||1)));
+  arr.slice(0,16).forEach(({m,bal,ccy})=>{
     const row=document.createElement('div');
     row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)';
-    row.innerHTML=`<span style="font-size:13px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px">${m}</span><div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:${bal>=0?'var(--text)':'var(--red)'}">${fmtFull(bal)}</div><div style="font-size:10px;color:var(--text3)">${ccy}</div></div>`;
+    const color=bal>=0?'var(--text)':'var(--red)';
+    row.innerHTML=`<span style="font-size:13px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px">${m}</span><div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:${color}">${fmtFull(Math.abs(bal))}</div><div style="font-size:10px;color:var(--text3)">${bal<0?'owe ':''} ${ccy}</div></div>`;
     body.appendChild(row);
   });
   if(body.lastElementChild) body.lastElementChild.style.borderBottom='none';
