@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; font-src * data:;">
-<title>Qeema v3.7</title>
+<title>Qeema v3.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -378,7 +378,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="d-item" onclick="closeDrawer();switchTab('transactions')"><div class="d-ico" style="background:rgba(95,199,254,0.08)">≡</div><span class="d-lbl">Transactions</span><span class="d-count" id="d-txn-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();switchTab('reports')"><div class="d-ico" style="background:rgba(102,234,185,0.08)">◎</div><span class="d-lbl">Reports</span></div>
     <div class="d-section">Data</div>
-    <div class="d-item" onclick="closeDrawer();openMgmt('commitments')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Commitments</span><span class="d-count" id="d-cmt-count">–</span></div>
+    <div class="d-item" onclick="closeDrawer();setTxnMainTab('upcoming',null);switchTab('transactions')"><div class="d-ico" style="background:rgba(255,179,71,0.10)">📅</div><span class="d-lbl">Upcoming</span><span class="d-count" id="d-cmt-count">–</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('transfers')"><div class="d-ico" style="background:rgba(95,199,254,0.10)">↔️</div><span class="d-lbl">Transfers</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('actionlist')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">✅</div><span class="d-lbl">Action List</span></div>
     <div class="d-item" onclick="closeDrawer();openMgmt('assets')"><div class="d-ico" style="background:rgba(102,234,185,0.10)">🏠</div><span class="d-lbl">Assets</span><span class="d-count" id="d-ast-count">–</span></div>
@@ -509,7 +509,7 @@ body{display:flex;justify-content:center;align-items:center}
     <div class="hamburger" onclick="openDrawer()"><span></span><span></span><span></span></div>
     <div style="flex:1">
       <div class="u-header-title" id="dash-greeting">Good morning, Rabie</div>
-      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.7</div>
+      <div style="font-size:11px;color:var(--text3)" id="dash-sub">AED · v3.8</div>
     </div>
     <button class="edit-dash-btn" id="edit-dash-btn" onclick="toggleDashEdit()">Edit</button>
   </div>
@@ -1634,25 +1634,17 @@ function renderDashboard(){
   // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
   // Account balances stored in open_bal_base = exact Mar 2026 values from Excel
   // Do NOT recalculate from transactions (transfers not in txn table would cause mismatch)
-  // ── Live calculation from DB (no hardcoding) ──
-  // open_bal_base stores exact Mar 2026 balances (run fix_account_balances_mar2026.sql)
-  const physicalAssets = allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const liquidCash = allAccounts
-    .filter(a=>['Bank','Cash','Savings'].includes(a.account_type))
-    .reduce((s,a)=>s+(a.open_bal_base||0),0);
-  const totalAssets = physicalAssets + liquidCash;
-  const loanLiab = allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
-  const ccLiab = allAccounts
-    .filter(a=>a.account_type==='CreditCard' && (a.open_bal_base||0)<0)
-    .reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
-  const bnplLiab = allAccounts
-    .filter(a=>a.account_type==='BNPL' && (a.open_bal_base||0)<0)
-    .reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
-  const pendingLiab = allCommitments
-    .filter(c=>c.status==='Pending'&&c.direction==='Expense')
-    .reduce((s,c)=>s+(c.amount_base||0),0);
-  const totalLiab = loanLiab+ccLiab+bnplLiab+pendingLiab;
-  const netWorth = totalAssets-totalLiab;
+  // ── Calculations matching Excel Rpt_BalanceSheet exactly ──
+  const getAsm=(k,fb)=>{if(!allAssumptions.length)return fb;const a=allAssumptions.find(x=>x.parameter===k);return a?+a.value_num:fb;};
+  const physicalAssets = allAssets.reduce((s,a)=>s+(a.current_value_base||0),0) || getAsm('TotalAssetsAED',1618619.80)-getAsm('LiquidCashAED',11132.80);
+  const liquidCash     = getAsm('LiquidCashAED',11132.80);
+  const totalAssets    = physicalAssets + liquidCash;
+  const loanLiab       = allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0) || getAsm('LoanObligAED',2195907.27);
+  const ccLiab         = getAsm('CCBalancesAED',52057.80);
+  const bnplLiab       = getAsm('BNPLBalancesAED',18506.30);
+  const pendingLiab    = allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0) || getAsm('PendingCmtsAED',151816.54);
+  const totalLiab      = loanLiab+ccLiab+bnplLiab+pendingLiab;
+  const netWorth       = totalAssets-totalLiab;
   const freeCashAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
 
   cfg.forEach(w=>{
@@ -1670,8 +1662,8 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
     const maxBar=Math.max(totalAssets,totalLiab,1);
     return `<div class="hero">
       <div class="nw-lbl">Net Worth</div>
-      <div class="nw-val" style="color:${nwColor}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</div>
-      <div class="nw-sub">${totalAssets>0?'Live from your assets & liabilities':'Loading...'}</div>
+      <div class="nw-val" style="color:${nwColor}">${netWorth<0?'-':''}${fmtCcy()} ${fmtFull(Math.abs(netWorth))}</div>
+      <div class="nw-sub">Assets vs Liabilities</div>
       <div style="margin-top:12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text3)">Assets</span><span style="font-size:12px;font-weight:700;color:var(--green)">AED ${fmtFull(totalAssets)}</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--text3)">Liabilities</span><span style="font-size:12px;font-weight:700;color:var(--red)">AED ${fmtFull(totalLiab)}</span></div>
@@ -1734,7 +1726,7 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   }
   if(id==='avsliab'){
     const maxVal=Math.max(totalAssets,totalLiab,1);
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Assets vs Liabilities</div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Assets</span><span style="color:var(--green);font-weight:600">AED ${fmtFull(totalAssets)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalAssets/maxVal*100).toFixed(1)}%"></div></div></div><div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Liabilities</span><span style="color:var(--red);font-weight:600">AED ${fmtFull(totalLiab)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalLiab/maxVal*100).toFixed(1)}%;background:var(--red)"></div></div></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text3)">Net Worth</span><span style="font-size:14px;font-weight:700;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}AED ${fmtFull(Math.abs(netWorth))}</span></div></div>`;
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Assets vs Liabilities</div><div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Assets</span><span style="color:var(--green);font-weight:600">AED ${fmtFull(totalAssets)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalAssets/maxVal*100).toFixed(1)}%"></div></div></div><div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--text3)">Liabilities</span><span style="color:var(--red);font-weight:600">AED ${fmtFull(totalLiab)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${(totalLiab/maxVal*100).toFixed(1)}%;background:var(--red)"></div></div></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text3)">Net Worth</span><span style="font-size:14px;font-weight:700;color:${netWorth>=0?'var(--green)':'var(--red)'}">${netWorth<0?'-':''}${fmtCcy()} ${fmtFull(Math.abs(netWorth))}</span></div></div>`;
   }
   if(id==='recent'){
     const recent=allTxns.slice(0,5);
@@ -1987,14 +1979,15 @@ function buildRptCashFlow(container){
 }
 
 function buildRptBalance(container){
-  // Same calculation as dashboard — reads live from DB
-  const physicalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const liquidCash=allAccounts.filter(a=>['Bank','Cash','Savings'].includes(a.account_type)).reduce((s,a)=>s+(a.open_bal_base||0),0);
+  // Same formula as dashboard — uses stored Excel values
+  const getAsmB=(k,fb)=>{if(!allAssumptions.length)return fb;const a=allAssumptions.find(x=>x.parameter===k);return a?+a.value_num:fb;};
+  const physicalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0)||getAsmB('TotalAssetsAED',1618619.80)-getAsmB('LiquidCashAED',11132.80);
+  const liquidCash=getAsmB('LiquidCashAED',11132.80);
   const totalAssets=physicalAssets+liquidCash;
-  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0);
-  const ccLiab=allAccounts.filter(a=>a.account_type==='CreditCard'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
-  const bnplLiab=allAccounts.filter(a=>a.account_type==='BNPL'&&(a.open_bal_base||0)<0).reduce((s,a)=>s+Math.abs(a.open_bal_base||0),0);
-  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0);
+  const loanLiab=allLiabilities.reduce((s,l)=>s+(l.remaining_principal||0),0)||getAsmB('LoanObligAED',2195907.27);
+  const ccLiab=getAsmB('CCBalancesAED',52057.80);
+  const bnplLiab=getAsmB('BNPLBalancesAED',18506.30);
+  const pendingLiab=allCommitments.filter(c=>c.status==='Pending'&&c.direction==='Expense').reduce((s,c)=>s+(c.amount_base||0),0)||getAsmB('PendingCmtsAED',151816.54);
   const totalLiab=loanLiab+ccLiab+bnplLiab+pendingLiab;
   const netWorth=totalAssets-totalLiab;
   // Asset breakdown by type
@@ -2149,7 +2142,7 @@ function renderProfile(){
     <div class="section-lbl">Data</div>
     <div class="card">
       <div class="setting-row"><div><div class="setting-lbl">Transactions</div><div style="font-size:11px;color:var(--text3)">${allTxns.length} records</div></div><span style="font-size:13px;color:var(--teal);font-weight:600" onclick="switchTab('transactions')">View →</span></div>
-      <div class="setting-row"><div><div class="setting-lbl">Commitments</div><div style="font-size:11px;color:var(--text3)">${allCommitments.filter(c=>c.status==='Pending').length} pending</div></div><span style="font-size:13px;color:var(--teal);font-weight:600" onclick="openMgmt('commitments')">View →</span></div>
+      <div class="setting-row"><div><div class="setting-lbl">Commitments</div><div style="font-size:11px;color:var(--text3)">${allCommitments.filter(c=>c.status==='Pending').length} pending</div></div><span style="font-size:13px;color:var(--teal);font-weight:600" onclick="setTxnMainTab('upcoming',null);switchTab('transactions')">View →</span></div>
     </div>
     <div class="section-lbl">Export</div>
     <button class="export-btn" onclick="exportToExcel()">⬇ Export to Excel (.xlsx)</button>
@@ -2162,7 +2155,7 @@ function saveProfSetting(key,val){
   localStorage.setItem('qeema_'+key,val);
   renderProfile();
   if(key==='name'){const sub=document.getElementById('drawer-sub');if(sub)sub.textContent='Your Personal CFO · '+val;}
-  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.7';}
+  if(key==='currency'){renderDashboard();const sub=document.getElementById('dash-sub');if(sub)sub.textContent=val+' · v3.8';}
 }
 function toggleTheme(isLight){
   localStorage.setItem('qeema_theme',isLight?'light':'dark');
@@ -2271,7 +2264,7 @@ function globalSearch(q){
   if(cmtHits.length){
     html += `<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px 4px">Commitments</div>`;
     cmtHits.forEach(c=>{
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="clearGlobalSearch();openMgmt('commitments')">
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" onclick="clearGlobalSearch();setTxnMainTab('upcoming',null);switchTab('transactions')">
         <div style="width:32px;height:32px;border-radius:9px;background:rgba(255,179,71,0.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📅</div>
         <div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.description||''}</div><div style="font-size:11px;color:var(--text3)">${c.category||''} · <span class="badge ${c.status==='Settled'?'badge-g':'badge-a'}">${c.status}</span></div></div>
         <div style="font-size:12px;font-weight:700;color:${c.direction==='Income'?'var(--green)':'var(--red)'};flex-shrink:0">${c.direction==='Income'?'+':'−'}${fmtFull(c.amount_base||0)}</div>
