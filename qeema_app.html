@@ -1152,6 +1152,40 @@ ASSUMPTIONS (editable):
 - FX rates: all 16 currencies above
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE QUERY TOOL — ALWAYS USE FOR DATA QUESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+For ANY question about specific amounts, spending, balances, or data — ALWAYS query the live database first. Never answer from memory.
+
+Use this exact format to query:
+[[QUERY:{"table":"transactions","filters":["tags=eq.Nour","txn_date=gte.2026-03-01","txn_date=lte.2026-03-31","direction=eq.Expense"],"select":"description,amount_base,category,txn_date,tags","order":"txn_date.desc"}]]
+
+AVAILABLE TABLES & KEY FIELDS:
+- transactions: id, txn_date, direction, description, category, subcategory, amount_base, currency_code, txn_method, tags, core_flag, val_recog_type
+- commitments: id, description, expected_date, amount_base, direction, category, status, tags, monthly_k
+- assets: asset_id, asset_name, asset_type, current_value_base, purchase_price_base, location
+- liabilities: liability_id, liability_name, remaining_principal, monthly_payment, annual_int_rate, loan_currency, remaining_pmts
+- accounts: method_name, account_type, currency_code, open_bal_base, core_flag
+- loan_schedule: liability_id, payment_no, due_date, expected_amt, expected_prin, expected_int, status
+- transfers: txn_date, from_method, to_method, amount_from, from_base
+
+FILTER OPERATORS (Supabase PostgREST syntax):
+- eq.VALUE → equals
+- gte.VALUE → greater than or equal
+- lte.VALUE → less than or equal
+- ilike.*VALUE* → contains (case insensitive)
+- is.null → is null
+
+QUERY RULES:
+- For "Nour spending March" → filter tags=eq.Nour + date range
+- For "dining this month" → filter category=eq.Dining + date range
+- For "all expenses Jan" → filter direction=eq.Expense + txn_date=gte.2026-01-01 + lte.2026-01-31
+- For "income this year" → filter direction=eq.Income + txn_date=gte.2026-01-01
+- For "ENBD transactions" → filter txn_method=eq.ENBD AED Account
+- For "pending commitments" → filter status=eq.Pending on commitments table
+- ALWAYS use [[QUERY:...]] for data questions. The app executes it and returns real results.
+- After getting results, answer concisely with a visual block (VIS_TABLE or VIS_BAR).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WHAT YOU CAN LOG — 8 OPERATION TYPES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1283,6 +1317,27 @@ const _b = '12MBGXyoDIOTee_X6R1xKand1hgPvtAdgefJHj';
 const _c = '-h6029GgqzAGPxAxbFh57VQ-E4bfDwAA';
 const CLAUDE_KEY = _a + _b + _c;
 
+// ── Supabase Query Executor ──
+async function executeQuery(querySpec) {
+  try {
+    const q = JSON.parse(querySpec);
+    // q = { table, filters, select, order, limit }
+    let params = '';
+    if (q.select) params += `select=${encodeURIComponent(q.select)}&`;
+    if (q.filters) {
+      // filters is array of "field=operator.value" strings
+      q.filters.forEach(f => { params += encodeURIComponent(f.split('=')[0]) + '=' + f.split('=').slice(1).join('=') + '&'; });
+    }
+    if (q.order) params += `order=${encodeURIComponent(q.order)}&`;
+    if (q.limit) params += `limit=${q.limit}&`;
+    const result = await sbGet(q.table, params.replace(/&$/, ''));
+    return result;
+  } catch(e) {
+    console.error('Query exec error:', e);
+    return { error: e.message };
+  }
+}
+
 async function callClaude(userMsg) {
   chatHistory.push({ role:'user', content: userMsg });
   let resp, data;
@@ -1307,30 +1362,62 @@ async function callClaude(userMsg) {
     throw new Error('Network error: ' + networkErr.message);
   }
 
-  try {
-    data = await resp.json();
-  } catch(parseErr) {
-    chatHistory.pop();
-    throw new Error('Response parse error: HTTP ' + resp.status);
-  }
+  try { data = await resp.json(); }
+  catch(parseErr) { chatHistory.pop(); throw new Error('Response parse error: HTTP ' + resp.status); }
 
   if (!resp.ok || data.error) {
     chatHistory.pop();
     const errMsg = data.error?.message || ('HTTP ' + resp.status);
-    const errType = data.error?.type || '';
     console.error('Full API response:', JSON.stringify(data));
-    throw new Error('Claude API error: ' + errMsg + (errType ? ' ('+errType+')' : ''));
+    throw new Error('Claude API error: ' + errMsg);
   }
 
   const text = data.content?.find(b => b.type === 'text')?.text;
-  if (!text) {
-    chatHistory.pop();
-    throw new Error('Empty response from Claude');
+  if (!text) { chatHistory.pop(); throw new Error('Empty response from Claude'); }
+
+  // ── Check if Claude wants to query the database ──
+  const queryMatch = text.match(/\[\[QUERY:([\s\S]*?)\]\]/);
+  if (queryMatch) {
+    // Execute the query against Supabase
+    const results = await executeQuery(queryMatch[1]);
+    const count = Array.isArray(results) ? results.length : 0;
+    const resultsJson = JSON.stringify(Array.isArray(results) ? results.slice(0, 100) : results);
+
+    // Store assistant message with placeholder
+    chatHistory.push({ role: 'assistant', content: '[Querying live database…]' });
+
+    // Inject results as user message
+    chatHistory.push({
+      role: 'user',
+      content: `Database returned ${count} rows: ${resultsJson}\n\nNow answer the original question using ONLY this real data. Be concise. Use visual blocks for numbers.`
+    });
+
+    // Get final answer with real data — call API directly (not callClaude to avoid double-push)
+    let resp2, data2;
+    resp2 = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: SYSTEM,
+        messages: chatHistory
+      })
+    });
+    data2 = await resp2.json();
+    const finalText = data2.content?.find(b => b.type === 'text')?.text || 'Could not process results.';
+    chatHistory.push({ role: 'assistant', content: finalText });
+    return finalText;
   }
+
   chatHistory.push({ role: 'assistant', content: text });
   return text;
 }
-
 function addMsg(html, isUser) {
   const msgs = document.getElementById('msgs');
   const row = document.createElement('div');
