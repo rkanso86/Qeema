@@ -209,6 +209,28 @@
   .chat-input::placeholder { color: var(--text3); }
   .send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity 0.15s, transform 0.1s; }
   .send-btn:active { opacity: 0.8; transform: scale(0.95); }
+  .mic-btn { width:40px; height:40px; border-radius:50%; background:var(--card); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s; }
+  .mic-btn.listening { background:var(--red); border-color:var(--red); animation: micpulse 1s infinite; }
+  @keyframes micpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+  .vis-card { background:var(--bg2); border-radius:14px; padding:14px; border:1px solid var(--border2); margin-top:8px; }
+  .vis-title { font-size:11px; font-weight:600; color:var(--teal); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  .vis-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .vis-table th { text-align:left; color:var(--text3); font-weight:500; padding:4px 0 8px; border-bottom:1px solid var(--border); }
+  .vis-table th.num, .vis-table td.num { text-align:right; }
+  .vis-table td { padding:7px 0; border-bottom:1px solid var(--border); color:var(--text); font-variant-numeric:tabular-nums; }
+  .vis-table tr:last-child td { border-bottom:none; }
+  .vis-table .pos { color:var(--green); font-weight:600; }
+  .vis-table .neg { color:var(--red); font-weight:600; }
+  .vis-table .total-row td { font-weight:700; border-top:2px solid var(--border2); padding-top:9px; }
+  .vis-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .vis-bar-label { font-size:11px; color:var(--text2); width:85px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vis-bar-bg { flex:1; background:var(--card2); border-radius:4px; height:7px; }
+  .vis-bar-fill { height:7px; border-radius:4px; transition:width 0.6s ease; }
+  .vis-bar-val { font-size:11px; font-weight:600; color:var(--text); width:72px; text-align:right; flex-shrink:0; }
+  .vis-kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+  .vis-kpi { background:var(--card2); border-radius:10px; padding:10px; }
+  .vis-kpi-lbl { font-size:10px; color:var(--text3); margin-bottom:3px; }
+  .vis-kpi-val { font-size:17px; font-weight:700; }
 
   /* ── REPORTS ── */
   .rpt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
@@ -394,7 +416,10 @@
       </div>
     </div>
     <div class="chat-input-area">
-      <textarea class="chat-input" id="chat-input" placeholder="Log a transaction or ask anything…" rows="1"></textarea>
+      <button class="mic-btn" id="mic-btn" onclick="toggleVoice()">
+        <svg id="mic-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="white"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <textarea class="chat-input" id="chat-input" placeholder="Ask your CFO anything or log a transaction…" rows="1"></textarea>
       <button class="send-btn" onclick="handleSend()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -985,7 +1010,30 @@ FINANCIAL QUESTIONS & REPORTS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Answer any financial question using Rabie's data above. Be precise, show calculations, reference actual numbers. Cover: balance sheet, cash flow, income statement, free cash, loan schedules, spending by category/tag, KPI analysis, savings rate, DTI, DSCR, net worth trajectory, commitment pipeline, asset performance.
 
-PERSONALITY: Direct, no fluff. Light Arabic (Yalla, Habibi, Tamam, Khalas, Mabrouk). Proactively flag: ⚠ critical cash runway, upcoming large commitments, KPI breaches.`;
+PERSONALITY: Direct, no fluff. Light Arabic (Yalla, Habibi, Tamam, Khalas, Mabrouk). Proactively flag: ⚠ critical cash runway, upcoming large commitments, KPI breaches.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL RESPONSES — ALWAYS USE THESE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+For ANY response with 3+ numbers, ALWAYS output a visual block. The app renders it as a proper chart/table. Never use raw number lists or markdown tables.
+
+For P&L, income statements, comparisons, multi-column data:
+[[VIS_TABLE:{"title":"...","headers":["Col1","Col2","Col3"],"rows":[{"label":"Row name","values":["1,000.00","2,000.00","3,000.00"],"type":"normal|pos|neg|total|result"}]}]]
+Row types: "normal"=plain, "pos"=green, "neg"=red, "total"=bold separator, "result"=bold final
+
+For spending breakdowns, category rankings, top items:
+[[VIS_BAR:{"title":"...","color":"#5FC7FE","items":[{"label":"Category","value":1234.56,"formatted":"1,234.56"}]}]]
+
+For KPI snapshots, health metrics, key numbers:
+[[VIS_KPI:{"title":"...","items":[{"label":"Metric","value":"17.20%","color":"#66EAB9"}]}]]
+
+Rules:
+- Short intro text (1-2 sentences) THEN visual block THEN 1-2 sentence insight
+- All AED amounts: comma separators, 2 decimal places
+- Use VIS_TABLE for income statement, balance sheet, loan schedule, free cash
+- Use VIS_BAR for spending by category, tag, method
+- Use VIS_KPI for health check, KPI summary, net worth snapshot`;
+
 
 
 
@@ -1120,11 +1168,27 @@ async function handleSend() {
       UPD_LIB:  reply.match(/\[\[UPD_LIB:([\s\S]*?)\]\]/),
     };
 
-    // Clean display — strip all JSON tags
+    // Parse visual blocks
+    const visMatches = [...reply.matchAll(/\[\[VIS_(TABLE|BAR|KPI):([\s\S]*?)\]\]/g)];
+
+    // Clean display — strip all JSON tags and visual blocks
     let displayReply = reply
       .replace(/\[\[(?:TXN|CMT|AST|LIB|TRF|ACC|TAG|ASM|FXR|SETTLE|UPD_AST|UPD_LIB):[\s\S]*?\]\]/g, '')
+      .replace(/\[\[VIS_(?:TABLE|BAR|KPI):[\s\S]*?\]\]/g, '')
       .trim();
-    addMsg(displayReply, false);
+
+    // Add text message
+    const msgBubble = addMsg(displayReply, false);
+
+    // Append visual cards after the bubble
+    visMatches.forEach(m => {
+      const visEl = renderVisual('VIS_' + m[1], m[2]);
+      if (visEl && msgBubble) {
+        msgBubble.parentElement.appendChild(visEl);
+        const msgs = document.getElementById('msgs');
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+    });
 
     // ── Execute operations ──
 
@@ -1248,6 +1312,128 @@ function quickSend(text) {
     document.getElementById('chat-input').value = text;
     handleSend();
   }, 150);
+}
+
+// ── Visual Response Renderer ──
+function renderVisual(type, json) {
+  try {
+    const d = JSON.parse(json);
+    const wrap = document.createElement('div');
+    wrap.className = 'vis-card';
+
+    if (type === 'VIS_TABLE') {
+      wrap.innerHTML = `<div class="vis-title">${d.title||''}</div>`;
+      const tbl = document.createElement('table');
+      tbl.className = 'vis-table';
+      // Header
+      if (d.headers) {
+        const tr = document.createElement('tr');
+        d.headers.forEach((h,i) => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          if (i > 0) th.className = 'num';
+          tr.appendChild(th);
+        });
+        tbl.appendChild(tr);
+      }
+      // Rows
+      (d.rows||[]).forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.type === 'total' || r.type === 'result') tr.className = 'total-row';
+        const td0 = document.createElement('td');
+        td0.textContent = r.label;
+        if (r.type === 'pos') td0.className = 'pos';
+        if (r.type === 'neg') td0.className = 'neg';
+        tr.appendChild(td0);
+        (r.values||[]).forEach(v => {
+          const td = document.createElement('td');
+          td.className = 'num';
+          const num = parseFloat(String(v).replace(/,/g,''));
+          if (r.type === 'pos' || (!['total','result','normal'].includes(r.type) && num > 0 && r.type !== 'neg')) td.className = 'num pos';
+          else if (r.type === 'neg' || num < 0) td.className = 'num neg';
+          else if (r.type === 'total' || r.type === 'result') td.className = 'num';
+          td.textContent = v;
+          tr.appendChild(td);
+        });
+        tbl.appendChild(tr);
+      });
+      wrap.appendChild(tbl);
+    }
+
+    else if (type === 'VIS_BAR') {
+      wrap.innerHTML = `<div class="vis-title">${d.title||''}</div>`;
+      const maxVal = Math.max(...(d.items||[]).map(i=>i.value), 1);
+      const color = d.color || '#5FC7FE';
+      const colors = ['#5FC7FE','#66EAB9','#204F46','#ffb347','#ff6b6b','#a78bfa','#34d399'];
+      (d.items||[]).forEach((item, idx) => {
+        const pct = Math.max(4, (item.value / maxVal) * 100);
+        const c = d.color ? color : colors[idx % colors.length];
+        const row = document.createElement('div');
+        row.className = 'vis-bar-row';
+        row.innerHTML = `
+          <div class="vis-bar-label">${item.label}</div>
+          <div class="vis-bar-bg"><div class="vis-bar-fill" style="width:${pct.toFixed(1)}%;background:${c}"></div></div>
+          <div class="vis-bar-val">${item.formatted||item.value}</div>`;
+        wrap.appendChild(row);
+      });
+    }
+
+    else if (type === 'VIS_KPI') {
+      wrap.innerHTML = `<div class="vis-title">${d.title||''}</div><div class="vis-kpi-grid" id="vkpi-${Date.now()}"></div>`;
+      const grid = wrap.querySelector('.vis-kpi-grid');
+      (d.items||[]).forEach(item => {
+        const kpi = document.createElement('div');
+        kpi.className = 'vis-kpi';
+        kpi.innerHTML = `<div class="vis-kpi-lbl">${item.label}</div><div class="vis-kpi-val" style="color:${item.color||'var(--text)'}">${item.value}</div>`;
+        grid.appendChild(kpi);
+      });
+    }
+
+    return wrap;
+  } catch(e) {
+    console.error('Visual render error:', e);
+    return null;
+  }
+}
+
+// ── Voice Input ──
+let recognition = null;
+let isListening = false;
+
+function toggleVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('Voice not supported on this browser', true);
+    return;
+  }
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('chat-input').placeholder = 'Listening…';
+  };
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById('chat-input').value = transcript;
+    setTimeout(() => handleSend(), 300);
+  };
+  recognition.onerror = (e) => {
+    showToast('Voice error: ' + e.error, true);
+  };
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('chat-input').placeholder = 'Ask your CFO anything or log a transaction…';
+  };
+  recognition.start();
 }
 
 // ── Input auto-resize ──
