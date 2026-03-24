@@ -872,20 +872,23 @@ function computeIS() {
 // ── KPIs — matches Excel Rpt_Dashboard Rolling 12M column ──
 function computeKPIs() {
   const txns = allTxns.map(enrichTxn);
+  const reportYear = 2026;
   
-  // Excel Rolling 12M window: from max(1, asOfMonth-11) to asOfMonth
-  // AsOfDate from assumptions, or use current date
-  const asOfParam = allAssumptions.find(a => a.parameter === 'AsOfDate');
-  const asOfDate = asOfParam?.value_date ? new Date(asOfParam.value_date) : new Date();
-  const asOfYM = asOfDate.getFullYear() * 100 + (asOfDate.getMonth() + 1);
-  const reportYear = asOfDate.getFullYear();
-  const asOfMonth = asOfDate.getMonth() + 1; // 1-12
-  const windowStart = Math.max(1, asOfMonth - 11);
+  // Find window end: last month with income > threshold (matches Excel's approach)
+  let windowEnd = 1;
+  for (let m = 1; m <= 12; m++) {
+    const ym = reportYear * 100 + m;
+    let mInc = 0;
+    txns.forEach(t => {
+      if (t.direction === 'Income' && ym >= t.valYM && ym <= t.valEndYM) mInc += t.monthlyK;
+    });
+    if (mInc > 1000) windowEnd = m; // Significant income threshold
+  }
+  const windowStart = Math.max(1, windowEnd - 11);
   
-  // VALUE-RECOGNITION basis over the window (Jan to AsOfMonth)
+  // VALUE-RECOGNITION basis over window (matches Hlpr_Aggregation rows 12-17)
   let coreInc = 0, coreExp = 0, nonCoreExp = 0, totalExp = 0;
-  
-  for (let m = windowStart; m <= asOfMonth; m++) {
+  for (let m = windowStart; m <= windowEnd; m++) {
     const ym = reportYear * 100 + m;
     txns.forEach(t => {
       if (ym < t.valYM || ym > t.valEndYM) return;
@@ -900,47 +903,44 @@ function computeKPIs() {
     });
   }
   
-  const totalInc = coreInc; // For savings rate, use core income only
-  
-  // Savings Rate = SUM(CoreInc - CoreExp) / SUM(CoreInc) over window
+  // Savings Rate = (CoreInc - CoreExp) / CoreInc — NO loan payments here
   const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
   
-  // DTI = avg monthly (loan+BNPL payments) / avg monthly income
-  // Excel uses Rpt_FreeCash committed values; we approximate with loan_schedule settlements
+  // DTI = monthly loan payments / average monthly income
   const loanPmtMonthly = allLiabilities.reduce((s, l) => s + +(l.monthly_payment || 0), 0);
-  const windowMonths = asOfMonth - windowStart + 1;
+  const windowMonths = windowEnd - windowStart + 1;
   const avgMonthlyIncome = coreInc / windowMonths;
   const dti = avgMonthlyIncome > 0 ? loanPmtMonthly / avgMonthlyIncome : 0;
   
-  // DSCR = SUM(Core Cash Inflows) / SUM(Loan Settlements) over window
-  // Cash basis: use TxnYM, not value-recognition
+  // DSCR = Cash Inflows / Loan Settlements (cash basis over window)
   let cashInflows = 0;
+  const wmStart = reportYear * 100 + windowStart;
+  const wmEnd = reportYear * 100 + windowEnd;
   txns.forEach(t => {
-    const ym = t.txnYM;
-    if (ym < reportYear * 100 + windowStart || ym > asOfYM) return;
-    if (t.direction === 'Income') cashInflows += t.amtBase;
+    if (t.direction !== 'Income') return;
+    if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
+    cashInflows += t.amtBase;
   });
   let loanSettlements = 0;
   allLoanSchedule.filter(s => s.status === 'Settled').forEach(s => {
-    const sYM = dateToYM(s.actual_date || s.due_date);
-    if (sYM >= reportYear * 100 + windowStart && sYM <= asOfYM) {
+    const sYM = dateToYM(s.due_date);
+    if (sYM >= wmStart && sYM <= wmEnd) {
       loanSettlements += +(s.exp_amt_base || s.expected_amt || 0);
     }
   });
   const dscr = loanSettlements > 0 ? cashInflows / loanSettlements : 99;
   
-  // Discretionary % = Non-Core Expense / Total Expense (cash basis over window)
+  // Discretionary % = Non-Core expense / Total expense (cash basis)
   let cashExpTotal = 0, cashExpNonCore = 0;
   txns.forEach(t => {
     if (t.direction !== 'Expense') return;
-    const ym = t.txnYM;
-    if (ym < reportYear * 100 + windowStart || ym > asOfYM) return;
+    if (t.txnYM < wmStart || t.txnYM > wmEnd) return;
     cashExpTotal += t.amtBase;
     if ((t.core_flag||'').toLowerCase() === 'non-core') cashExpNonCore += t.amtBase;
   });
   const discPct = cashExpTotal > 0 ? cashExpNonCore / cashExpTotal : 0;
 
-  return { savingsRate, dti, dscr, discPct, totalInc, totalExp: coreExp + nonCoreExp };
+  return { savingsRate, dti, dscr, discPct, totalInc: coreInc, totalExp };
 }
 
 
