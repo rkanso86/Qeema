@@ -1531,18 +1531,33 @@ function renderDashboard(){
   const el=document.getElementById('dash-widgets');
   el.innerHTML='';
 
-  // Live calculations from DB
+  // ── Live FX rates from loaded data (fall back to constants) ──
+  const fxMap={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70,SAR:0.98};
+  // (fx_rates table loaded on demand — use constants as they match DB)
+
+  // ── Net Worth: Assets - Liabilities (AED equiv) ──
   const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const fxUSD=3.67; // fallback, ideally from fx_rates
-  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0)),0);
+  const totalLiab=allLiabilities.reduce((s,l)=>{
+    const rem=l.remaining_principal||0;
+    return s+(l.loan_currency==='USD'?rem*fxMap.USD:l.loan_currency==='EUR'?rem*fxMap.EUR:l.loan_currency==='CAD'?rem*fxMap.CAD:rem);
+  },0);
   const netWorth=totalAssets-totalLiab;
 
-  // Liquid cash = sum of cash/bank accounts by transaction net
-  const cashInflow=allTxns.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
-  const cashOutflow=allTxns.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
-  // Use account opening balances + transaction delta
-  const openingBal=allAccounts.filter(a=>['Bank','Cash','Savings'].includes(a.account_type)).reduce((s,a)=>s+(a.open_bal_base||0),0);
-  const liquidCash=openingBal+(cashInflow-cashOutflow);
+  // ── Liquid Cash: opening balances of selected accounts + net transactions ──
+  // Opening balances are as-of model start (Jan 2026)
+  // Net transactions = all income - all expense flows recorded
+  const freeCashAccounts = JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
+  const liquidAccounts = allAccounts.filter(a=>{
+    if(freeCashAccounts) return freeCashAccounts.includes(a.method_name);
+    // Default: Bank + Cash + Savings accounts only (exclude credit cards, BNPL)
+    return ['Bank','Cash','Savings'].includes(a.account_type) && a.is_active==='Y';
+  });
+  const openingBal = liquidAccounts.reduce((s,a)=>s+(a.open_bal_base||0),0);
+  // Transaction net: only count transactions for the selected methods
+  const selectedMethods = new Set(liquidAccounts.map(a=>a.method_name));
+  const txnNetForAccounts = allTxns.filter(t=>!freeCashAccounts||selectedMethods.has(t.txn_method))
+    .reduce((s,t)=>s+(t.direction==='Income'?1:-1)*(t.amount_base||0),0);
+  const liquidCash = openingBal + txnNetForAccounts;
 
   cfg.forEach(w=>{
     const div=document.createElement('div');div.className='widget';
@@ -1596,7 +1611,27 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   }
   if(id==='freecash'){
     const color=liquidCash>50000?'var(--green)':liquidCash>10000?'var(--amber)':'var(--red)';
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px">Free Cash</div><div style="text-align:center;padding:8px 0 12px"><div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(liquidCash)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">AED · Liquid Cash Available</div></div></div>`;
+    const savedAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
+    const includedCount=savedAccounts?savedAccounts.length:liquidAccounts.length;
+    return `<div class="card" id="fc-widget" style="min-height:120px;position:relative">
+      <div id="fc-front">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-size:14px;font-weight:600;color:var(--text)">Free Cash</span>
+          <span style="font-size:11px;color:var(--teal);cursor:pointer;font-weight:600" onclick="showFreeCashBack()">⚙ ${includedCount} account${includedCount!==1?'s':''}</span>
+        </div>
+        <div style="text-align:center;padding:8px 0 12px">
+          <div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(liquidCash)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">AED · Liquid Cash Available</div>
+        </div>
+      </div>
+      <div id="fc-back" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:600;color:var(--text)">Select accounts</span>
+          <span style="font-size:11px;color:var(--teal);cursor:pointer;font-weight:600" onclick="saveFreeCashAccounts()">Done</span>
+        </div>
+        <div id="fc-account-list" style="max-height:200px;overflow-y:auto"></div>
+      </div>
+    </div>`;
   }
   if(id==='avsliab'){
     const maxVal=Math.max(totalAssets,totalLiab,1);
@@ -1859,8 +1894,9 @@ function buildRptCashFlow(container){
 
 function buildRptBalance(container){
   const totalAssets=allAssets.reduce((s,a)=>s+(a.current_value_base||0),0);
-  const fxUSD=3.67;
-  const totalLiab=allLiabilities.reduce((s,l)=>s+(l.loan_currency==='USD'?(l.remaining_principal||0)*fxUSD:(l.remaining_principal||0)),0);
+  const fx={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
+  const toBase=(v,ccy)=>v*(fx[ccy]||1);
+  const totalLiab=allLiabilities.reduce((s,l)=>s+toBase(l.remaining_principal||0,l.loan_currency),0);
   const netWorth=totalAssets-totalLiab;
   // Assets breakdown
   const byType={};
@@ -1938,13 +1974,14 @@ function buildRptMethods(container){
 }
 
 function buildRptLoans(container){
-  const fxUSD=3.67;
+  const fx3={AED:1,USD:3.67,EUR:4.02,GBP:4.65,CAD:2.70};
+  const toBase3=(v,ccy)=>v*(fx3[ccy]||1);
   const body=document.createElement('div');
   if(!allLiabilities.length){body.innerHTML='<div style="color:var(--text3);font-size:12px">No active loans</div>';container.appendChild(body);return;}
   allLiabilities.forEach(l=>{
     const remNative=l.remaining_principal||0;
-    const remAED=l.loan_currency==='USD'?remNative*fxUSD:remNative;
-    const origAED=l.loan_currency==='USD'?(l.original_principal||0)*fxUSD:(l.original_principal||0);
+    const remAED=toBase3(remNative,l.loan_currency);
+    const origAED=toBase3(l.original_principal||0,l.loan_currency);
     const pct=origAED>0?Math.min(100,((origAED-remAED)/origAED)*100):0;
     const div=document.createElement('div');
     div.style.cssText='padding:10px 0;border-bottom:1px solid var(--border)';
@@ -2159,6 +2196,40 @@ document.addEventListener('click', e=>{
     res.style.display = 'none';
   }
 });
+
+// =============================================
+// FREE CASH FLIP WIDGET
+// =============================================
+function showFreeCashBack(){
+  const front=document.getElementById('fc-front');
+  const back=document.getElementById('fc-back');
+  const list=document.getElementById('fc-account-list');
+  if(!front||!back||!list) return;
+  front.style.display='none';
+  back.style.display='block';
+  // Render account checkboxes
+  const saved=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
+  const cashTypes=['Bank','Cash','Savings','Investment'];
+  const accounts=allAccounts.filter(a=>a.is_active==='Y');
+  list.innerHTML='';
+  accounts.forEach(a=>{
+    const isChecked=saved?saved.includes(a.method_name):cashTypes.includes(a.account_type);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML=`<div><div style="font-size:13px;color:var(--text)">${a.method_name}</div><div style="font-size:10px;color:var(--text3)">${a.account_type} · ${a.currency_code} · ${fmtFull(Math.abs(a.open_bal_base||0))}</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-inp fc-acc-chk" data-name="${a.method_name}" ${isChecked?'checked':''}><span class="toggle-slider"></span></label>`;
+    list.appendChild(row);
+  });
+}
+
+function saveFreeCashAccounts(){
+  const checked=[...document.querySelectorAll('.fc-acc-chk:checked')].map(c=>c.dataset.name);
+  localStorage.setItem('qeema_free_cash_accounts',JSON.stringify(checked));
+  const front=document.getElementById('fc-front');
+  const back=document.getElementById('fc-back');
+  if(front) front.style.display='block';
+  if(back) back.style.display='none';
+  renderDashboard(); // recalculate with new selection
+}
 
 async function updateCounts(){
   document.getElementById('d-txn-count').textContent=allTxns.length;
@@ -2412,16 +2483,23 @@ ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min
 // =============================================
 function calcLiveKPIs(){
   if(!allTxns.length) return null;
-  // Rolling 12M
+  // Rolling 12M transactions
   const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear()-1);
-  const yr = allTxns.filter(t=>new Date(t.txn_date)>=cutoff);
+  const yr = allTxns.filter(t=>t.txn_date&&new Date(t.txn_date)>=cutoff);
   const inc12 = yr.filter(t=>t.direction==='Income').reduce((s,t)=>s+(t.amount_base||0),0);
   const exp12 = yr.filter(t=>t.direction==='Expense').reduce((s,t)=>s+(t.amount_base||0),0);
-  const savingsRate = inc12>0 ? (inc12-exp12)/inc12 : BASE.savingsRate;
-  const loanPmts = allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
-  const dti = inc12>0 ? (loanPmts*12)/inc12 : BASE.dti;
-  const avgMonthlyInc = inc12/12||BASE.monthlyIncome;
-  const dscr = loanPmts>0 ? avgMonthlyInc/loanPmts : BASE.dscr;
+  if(!inc12) return null; // no income data yet, use baseline
+  // Savings rate = (income - expenses) / income
+  const savingsRate = (inc12-exp12)/inc12;
+  // Monthly loan payments from liabilities register (not from transactions to avoid double-count)
+  const loanPmtsMonthly = allLiabilities.reduce((s,l)=>s+(l.monthly_payment||0),0);
+  const loanPmtsAnnual = loanPmtsMonthly*12;
+  // DTI = annual loan payments / annual income
+  const dti = inc12>0 ? loanPmtsAnnual/inc12 : BASE.dti;
+  // DSCR = monthly income / monthly loan payments
+  const avgMonthlyInc = inc12/12;
+  const dscr = loanPmtsMonthly>0 ? avgMonthlyInc/loanPmtsMonthly : BASE.dscr;
+  // Discretionary = non-core expenses / total expenses
   const discExp = yr.filter(t=>t.direction==='Expense'&&t.core_flag==='Non-Core').reduce((s,t)=>s+(t.amount_base||0),0);
   const discPct = exp12>0 ? discExp/exp12 : BASE.discPct;
   return { savingsRate, dti, dscr, discPct };
