@@ -906,11 +906,33 @@ function computeKPIs() {
   // Savings Rate = (CoreInc - CoreExp) / CoreInc — NO loan payments here
   const savingsRate = coreInc > 0 ? (coreInc - coreExp) / coreInc : 0;
   
-  // DTI = monthly loan payments / average monthly income
-  const loanPmtMonthly = allLiabilities.reduce((s, l) => s + +(l.monthly_payment || 0), 0);
+  // DTI = avg monthly debt service / avg monthly committed income (matches Excel Rpt_FreeCash)
   const windowMonths = windowEnd - windowStart + 1;
-  const avgMonthlyIncome = coreInc / windowMonths;
-  const dti = avgMonthlyIncome > 0 ? loanPmtMonthly / avgMonthlyIncome : 0;
+  // Monthly debt service: loan payments + BNPL from loan_schedule in window
+  let totalDebtService = 0;
+  allLoanSchedule.forEach(s => {
+    const sYM = dateToYM(s.due_date);
+    if (sYM >= reportYear * 100 + windowStart && sYM <= reportYear * 100 + windowEnd) {
+      totalDebtService += +(s.exp_amt_base || s.expected_amt || 0);
+    }
+  });
+  const avgMonthlyDebt = totalDebtService / windowMonths;
+  // Committed income: pending income commitments in window + actual income
+  let committedIncome = 0;
+  allCommitments.filter(c => c.direction === 'Income').forEach(c => {
+    const cYM = dateToYM(c.expected_date);
+    if (cYM >= reportYear * 100 + windowStart && cYM <= reportYear * 100 + windowEnd) {
+      committedIncome += +(c.amount_base || 0);
+    }
+  });
+  // Also add actual income from transactions
+  txns.forEach(t => {
+    if (t.direction !== 'Income') return;
+    if (t.txnYM < reportYear * 100 + windowStart || t.txnYM > reportYear * 100 + windowEnd) return;
+    committedIncome += t.amtBase;
+  });
+  const avgMonthlyCommittedIncome = committedIncome / windowMonths;
+  const dti = avgMonthlyCommittedIncome > 0 ? avgMonthlyDebt / avgMonthlyCommittedIncome : 0;
   
   // DSCR = Cash Inflows / Loan Settlements (cash basis over window)
   let cashInflows = 0;
