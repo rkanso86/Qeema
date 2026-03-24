@@ -3039,43 +3039,55 @@ function onboardingNext(step,total){
   }
 }
 
+// ── Safe fetch wrapper ──
+async function safeGet(table, params, label){
+  try{
+    const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+params, {headers:HDR});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  } catch(e){
+    console.error('safeGet failed:', label, e.message);
+    return null; // null = failed, [] = empty but succeeded
+  }
+}
+
 async function loadAll(){
   const theme=localStorage.getItem('qeema_theme')||'dark';
   document.documentElement.setAttribute('data-theme',theme);
   const h=new Date().getHours();
   const name=localStorage.getItem('qeema_name')||'Rabie';
-  const greeting=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-  document.getElementById('dash-greeting').textContent=greeting+', '+name;
+  document.getElementById('dash-greeting').textContent=(h<12?'Good morning':h<17?'Good afternoon':'Good evening')+', '+name;
   document.getElementById('loading').style.display='none';
   loadChatHistory();
 
-  // Load each table individually — one failure won't block others
-  const errors=[];
-  async function safe(fn, label){
-    try{ return await fn(); }
-    catch(e){ errors.push(label+': '+e.message); console.error(label, e); return []; }
-  }
-
-  [allLiabilities,allAssets,allTxns,allCommitments,allAccounts]= await Promise.all([
-    safe(()=>sbGet('liabilities','status=eq.Active'),                    'liabilities'),
-    safe(()=>sbGet('assets','select=*'),                                  'assets'),
-    safe(()=>sbGet('transactions','order=txn_date.desc&limit=300'),       'transactions'),
-    safe(()=>sbGet('commitments','order=expected_date.asc'),              'commitments'),
-    safe(()=>sbGet('accounts','is_active=eq.Y&order=method_name.asc'),   'accounts'),
+  // Fetch all tables — null means fetch failed, [] means empty
+  const results = await Promise.all([
+    safeGet('liabilities','status=eq.Active','liabilities'),
+    safeGet('assets','select=*','assets'),
+    safeGet('transactions','order=txn_date.desc&limit=300','transactions'),
+    safeGet('commitments','order=expected_date.asc','commitments'),
+    safeGet('accounts','is_active=eq.Y&order=method_name.asc','accounts'),
   ]);
 
-  if(errors.length){
-    console.error('Load errors:', errors);
-    const el=document.getElementById('dash-widgets');
-    if(el && allTxns.length===0 && allAssets.length===0){
-      el.innerHTML=`<div class="card" style="text-align:center;padding:24px">
-        <div style="font-size:24px;margin-bottom:12px">⚠️</div>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px">Connection Error</div>
-        <div style="font-size:11px;color:var(--red);margin-bottom:8px;text-align:left;background:var(--card2);padding:10px;border-radius:8px;word-break:break-all">${errors.join('<br>')}</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px">URL: ${SB_URL.slice(0,40)}…</div>
-        <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:10px 24px;font-family:var(--font);font-size:13px;font-weight:700;color:#1a2030;cursor:pointer">Retry</button>
+  const anyFailed = results.some(r => r === null);
+  const allFailed = results.every(r => r === null);
+
+  allLiabilities = results[0] || [];
+  allAssets      = results[1] || [];
+  allTxns        = results[2] || [];
+  allCommitments = results[3] || [];
+  allAccounts    = results[4] || [];
+
+  if(allFailed){
+    document.getElementById('dash-widgets').innerHTML=`
+      <div class="card" style="text-align:center;padding:28px 20px">
+        <div style="font-size:32px;margin-bottom:14px">📡</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px">Cannot reach database</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Check your internet connection and try again.</div>
+        <div style="font-size:11px;color:var(--text3);background:var(--card2);border-radius:8px;padding:8px;margin-bottom:16px;word-break:break-all">${SB_URL}</div>
+        <button onclick="location.reload()" style="background:var(--grad);border:none;border-radius:12px;padding:11px 28px;font-family:var(--font);font-size:14px;font-weight:700;color:#1a2030;cursor:pointer">↺ Retry</button>
       </div>`;
-    }
+    return;
   }
 
   renderDashboard();
@@ -3083,10 +3095,6 @@ async function loadAll(){
   buildMonthTabs();
   updateCounts();
   updateNotifications();
-  // Show onboarding on first visit
-  if(!localStorage.getItem('qeema_onboarded') && !allTxns.length){
-    setTimeout(()=>openOnboarding(),500);
-  }
 }
 loadAll();
 </script>
