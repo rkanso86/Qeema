@@ -715,9 +715,6 @@ const WIDGET_DEFS = [
   { id:'freecash',   label:'Free Cash',                 'default':true },
   { id:'avsliab',    label:'Assets vs Liabilities',     'default':true },
   { id:'recent',     label:'Recent Transactions',       'default':true },
-  { id:'nextloan',   label:'Next Loan Payment',         'default':false },
-  { id:'pendcmt',    label:'Pending Commitments',       'default':false },
-  { id:'toptag',     label:'Top Spending Tag',          'default':false },
 ];
 
 const REPORT_WIDGETS = [
@@ -910,7 +907,6 @@ function computeKPIs() {
   // Excel adds: SUMIFS(Commitments Z col, Direction, CoreFlag<>Non-Core, Type<>BNPL, Status=Settled, ValStartYM<=M, ValEndYM>=M)
   allCommitments.forEach(c => {
     if (c.status === 'Pending') return;
-    if ((c.description||'').toLowerCase().includes('bnpl')) return; // Skip BNPL-type
     if ((c.core_flag||'').toLowerCase() === 'non-core') return;
     
     const mk = +(c.monthly_k || c.amount_base || 0);
@@ -945,12 +941,12 @@ function computeKPIs() {
   // CommittedIncome = ONLY pending income commitments due within each month's salary cycle
   // NOT actual transaction income!
   
-  // Loan dues from loan_schedule (pending payments in window)
+  // Loan dues from loan_schedule (PENDING payments in window only, matching Excel FreeCash row 10)
   let loanDues = 0;
   allLoanSchedule.forEach(s => {
+    if (s.status !== 'Pending') return;
     const sYM = dateToYM(s.due_date);
     if (sYM >= wmStart && sYM <= wmEnd) {
-      // Include both pending and settled (the schedule amount is the due amount)
       loanDues += +(s.exp_amt_base || s.expected_amt || 0);
     }
   });
@@ -1921,16 +1917,27 @@ function renderDashboard(){
 function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   if(id==='networth'){
     const nwColor=netWorth>=0?'var(--green)':'var(--red)';
-    const maxBar=Math.max(totalAssets,totalLiab,1);
+    // MoM NW change from Excel Rpt_BalanceSheet row 22/23
+    // Previous month NW = current NW - monthly change
+    // We approximate: use Rpt_Dashboard NW Change value or compute from balance sheet
+    const nwChangeParam = allAssumptions.find(a=>a.parameter==='NWChange');
+    const nwChange = nwChangeParam ? +(nwChangeParam.value_num||0) : 0;
+    const prevNW = netWorth - nwChange;
+    const nwChangePct = prevNW !== 0 ? (nwChange / Math.abs(prevNW)) * 100 : 0;
+    const changeColor = nwChange >= 0 ? 'var(--green)' : 'var(--red)';
+    const changeIcon = nwChange >= 0 ? '↑' : '↓';
     return `<div class="hero">
       <div class="nw-lbl">Net Worth</div>
       <div class="nw-val" style="color:${nwColor}">${netWorth<0?'-':''}${fmtCcy()} ${fmtFull(Math.abs(netWorth))}</div>
-      <div class="nw-sub">Assets vs Liabilities</div>
-      <div style="margin-top:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:var(--text3)">Assets</span><span style="font-size:12px;font-weight:700;color:var(--green)">AED ${fmtFull(totalAssets)}</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--text3)">Liabilities</span><span style="font-size:12px;font-weight:700;color:var(--red)">AED ${fmtFull(totalLiab)}</span></div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,totalLiab>0?(totalAssets/totalLiab*100):100).toFixed(1)}%"></div></div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text3)">Monthly Change</span>
+        <div style="text-align:right">
+          <span style="font-size:14px;font-weight:700;color:${changeColor}">${changeIcon} ${fmtFull(Math.abs(nwChange))} AED</span>
+          <span style="font-size:11px;color:${changeColor};margin-left:6px">(${nwChangePct>=0?'+':''}${nwChangePct.toFixed(1)}%)</span>
+        </div>
       </div>
+      <div class="bar-bg" style="margin-top:8px"><div class="bar-fill" style="width:${Math.min(100,totalLiab>0?(totalAssets/totalLiab*100):100).toFixed(1)}%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text3)"><span>Assets: AED ${fmtFull(totalAssets)}</span><span>Liab: AED ${fmtFull(totalLiab)}</span></div>
     </div>`;
   }
   if(id==='kpi'){
@@ -1951,25 +1958,55 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
   if(id==='spending'){
     const byCat={};
     const _isData = computeIS();
-    // Sum expense categories across all months with data
-    Object.values(_isData).forEach(m => {
-      Object.entries(m.cats || {}).forEach(([cat, val]) => {
+    // Current month only
+    const _now = new Date();
+    const _curYM = _now.getFullYear() * 100 + (_now.getMonth() + 1);
+    const _curMonth = _isData[String(_curYM)];
+    if (_curMonth && _curMonth.cats) {
+      Object.entries(_curMonth.cats).forEach(([cat, val]) => {
         byCat[cat] = (byCat[cat] || 0) + val;
       });
-    });
+    }
     const catArr=Object.entries(byCat).map(([cat,val])=>({cat,val})).sort((a,b)=>b.val-a.val);
     const total=catArr.reduce((s,c)=>s+c.val,0)||1;
     const top4=catArr.slice(0,4);
     const colors=['#5FC7FE','#66EAB9','#204F46','#ffb347'];
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Spending by Category</div>${top4.map(({cat,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}</div>`;
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Spending by Category · This Month</div>${top4.map(({cat,val},i)=>`<div class="srow"><div class="sdot" style="background:${colors[i]}"></div><div class="sinfo"><div class="sname">${cat}</div><div class="sbar-bg"><div class="sbar" style="width:${(val/total*100).toFixed(0)}%;background:${colors[i]}"></div></div></div><span class="samt">AED ${fmtFull(val)}</span></div>`).join('')}</div>`;
   }
   if(id==='upcoming'){
-    const pend=allCommitments.filter(c=>c.status==='Pending').slice(0,4);
-    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Upcoming Commitments</div>${pend.map(c=>`<div class="upcoming"><div class="up-ico" style="background:${c.direction==='Income'?'rgba(102,234,185,0.12)':'rgba(255,107,107,0.12)'}">${catIcons[c.category]||'📌'}</div><div class="up-info"><div class="up-name">${c.description}</div><div class="up-date">${c.expected_date?fmtDate(c.expected_date):'TBD'} · ${c.category||''}</div></div><div class="up-amt ${c.direction==='Income'?'amt-in':'amt-out'}">${c.direction==='Income'?'+':'−'}${fmt(c.amount_base)}</div></div>`).join('')||'<div style="color:var(--text3);font-size:12px">No pending commitments</div>'}</div>`;
+    // Merge next items from commitments, transfer_commitments, and loan_schedule
+    const today = new Date().toISOString().split('T')[0];
+    const items = [];
+    // Pending commitments
+    allCommitments.filter(c=>c.status==='Pending'&&c.expected_date>=today).forEach(c=>{
+      items.push({date:c.expected_date, desc:c.description, amt:+(c.amount_base||0), dir:c.direction, cat:c.category||'', type:'commitment'});
+    });
+    // Pending loan payments
+    allLoanSchedule.filter(s=>s.status==='Pending'&&s.due_date>=today).forEach(s=>{
+      const lib = allLiabilities.find(l=>l.liability_id===s.liability_id);
+      items.push({date:s.due_date, desc:(lib?lib.liability_name:'Loan')+' #'+s.payment_no, amt:+(s.exp_amt_base||s.expected_amt||0), dir:'Expense', cat:'Loan Payment', type:'loan'});
+    });
+    // Pending transfer commitments
+    allTransfers.forEach && allTransfers.length; // transfers already loaded
+    // Use transfer_commitments if available (they're in the transfers tab)
+    // For now, we have allTransfers but transfer_commitments need separate fetch
+    // Sort by date and take top 5
+    items.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const top5 = items.slice(0,5);
+    return `<div class="card"><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">Upcoming (Next 5)</div>${top5.map(c=>`<div class="upcoming"><div class="up-ico" style="background:${c.dir==='Income'?'rgba(102,234,185,0.12)':c.type==='loan'?'rgba(255,179,71,0.12)':'rgba(255,107,107,0.12)'}">${c.type==='loan'?'🏦':catIcons[c.cat]||'📌'}</div><div class="up-info"><div class="up-name">${c.desc}</div><div class="up-date">${c.date?fmtDate(c.date):'TBD'} · ${c.cat}</div></div><div class="up-amt ${c.dir==='Income'?'amt-in':'amt-out'}">${c.dir==='Income'?'+':'−'}${fmt(c.amt)}</div></div>`).join('')||'<div style="color:var(--text3);font-size:12px">Nothing upcoming</div>'}</div>`;
   }
   if(id==='freecash'){
-    const color=liquidCash>50000?'var(--green)':liquidCash>10000?'var(--amber)':'var(--red)';
+    // Compute free cash from selected accounts (or default Bank/Cash)
     const savedAccounts=JSON.parse(localStorage.getItem('qeema_free_cash_accounts')||'null');
+    let fcLiquid = 0;
+    if (savedAccounts && savedAccounts.length > 0) {
+      allAccounts.filter(a => savedAccounts.includes(a.method_name)).forEach(a => {
+        fcLiquid += +(a.open_bal_original || 0);
+      });
+    } else {
+      fcLiquid = liquidCash; // default from computeBS
+    }
+    const color=fcLiquid>50000?'var(--green)':fcLiquid>10000?'var(--amber)':'var(--red)';
     const bankAccounts=allAccounts.filter(a=>['Bank','Cash','Savings'].includes(a.account_type));
     const includedCount=savedAccounts?savedAccounts.length:bankAccounts.length;
     return `<div class="card" id="fc-widget" style="min-height:120px;position:relative">
@@ -1979,7 +2016,7 @@ function buildWidget(id,liquidCash,totalAssets,totalLiab,netWorth){
           <span style="font-size:11px;color:var(--teal);cursor:pointer;font-weight:600" onclick="showFreeCashBack()">⚙ ${includedCount} account${includedCount!==1?'s':''}</span>
         </div>
         <div style="text-align:center;padding:8px 0 12px">
-          <div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(liquidCash)}</div>
+          <div style="font-size:32px;font-weight:800;color:${color}">${fmtFull(fcLiquid)}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px">AED · Liquid Cash Available</div>
         </div>
       </div>
